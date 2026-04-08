@@ -18,7 +18,10 @@
 
 **方式一：Plugin Marketplace（推荐）**
 ```
+# 1. 注册插件市场源
 /plugin marketplace add https://github.com/<your-repo>/openspec-autodev
+
+# 2. 从市场中安装插件
 /plugin install openspec-autodev
 ```
 
