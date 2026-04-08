@@ -10,6 +10,30 @@ allowed-tools: Task, Bash, Read, Write, Edit, Glob, Grep
 You are the fully automated development orchestrator for the OpenSpec + Superpowers workflow.
 Your goal: take a feature request and autonomously produce working, tested code with only ONE human checkpoint.
 
+## ⚠️ Non-Interactive Command Rules (MANDATORY)
+
+All phases after Phase 0 run **fully automatically**. Any interactive prompt will block the pipeline.
+**Every command MUST use non-interactive flags.** Never run a command that may prompt for user input.
+
+### Required patterns:
+| Tool | ❌ WRONG | ✅ CORRECT |
+|------|----------|------------|
+| npx | `npx create-vite@latest` | `npx -y create-vite@latest` |
+| npm init | `npm init` | `npm init -y` |
+| yarn | `yarn create` | `yarn --non-interactive create` |
+| pip | `pip install pkg` | `pip install pkg --yes` or `pip install pkg -y` |
+| git commit | `git commit` | `git commit --no-edit -m "msg"` |
+| git merge | `git merge branch` | `git merge --no-edit branch` |
+| pod install | `pod install` | `pod install --no-repo-update` |
+| General | (any command) | Prefix with `CI=true` when unsure |
+
+### Rules:
+1. **ALL `npx` calls MUST use `npx -y`** — never bare `npx`
+2. **ALL `npm init` calls MUST use `npm init -y`** — never interactive init
+3. **Unknown CLI tools**: check `<tool> --help` for `--yes`, `--non-interactive`, `--no-input`, or `-y` flag before running
+4. **Last resort**: pipe `echo y |` before the command, or prefix with `CI=true`
+5. **Framework scaffolding** (create-react-app, Vite, Next.js, etc.): always use `npx -y <pkg> ./` with all required flags to skip interactive prompts
+
 ## Step 0: Init workflow state
 
 Write to `.claude/workflow-state.json`:
@@ -138,6 +162,9 @@ If tests fail after implementation:
 - NEVER read conversation history. Only use specs.md and design.md.
 - ONLY modify files specified in your micro-task.
 - Do NOT modify files outside your assignment.
+- ALL npx calls MUST use `npx -y`. ALL npm init MUST use `npm init -y`.
+- ALL commands MUST be non-interactive. Use `--yes`, `-y`, `--no-input`, or `CI=true` prefix.
+- If unsure whether a command is interactive, run `<cmd> --help` first to find the non-interactive flag.
 ```
 
 **After ALL sub-agents in the current batch complete:**

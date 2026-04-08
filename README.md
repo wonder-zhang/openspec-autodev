@@ -152,13 +152,6 @@ bash parallel-dev.sh
 | OpenSpec | 规格驱动 | `setup` 命令自动安装 |
 | Superpowers | TDD 技能包 | `setup` 命令自动安装 |
 
-## 📄 灵感来源
-
-本插件的并行执行设计参考了 [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) 项目的以下核心理念：
-- **Ultrawork** 并行引擎：独立任务同时派发
-- **Team** 团队协作模式：多 agent 协调执行
-- **Staged Pipeline**：分阶段流水线架构
-
 ## 📝 License
 
 MIT

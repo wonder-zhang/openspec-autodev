@@ -104,7 +104,95 @@ Analyze the project structure to detect:
 Update the `CLAUDE.md` Technical Constraints section with detected values:
 - Replace `[Auto-detected or user-specified]` with actual values
 
-## Step 6: Verification
+## Step 6: Configure Permissions for Non-Interactive Automation
+
+If `.claude/settings.json` does NOT exist, create it with the following permissions template.
+If it already exists, **merge** the `permissions` block without overwriting existing rules.
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Task",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npm install *)",
+      "Bash(npm list *)",
+      "Bash(npm init -y *)",
+      "Bash(npx -y *)",
+      "Bash(npx --yes *)",
+      "Bash(node *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git worktree *)",
+      "Bash(git log *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)",
+      "Bash(openspec *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(echo *)",
+      "Bash(cd * && *)",
+      "Bash(CI=true *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/*)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(curl * | bash*)",
+      "Bash(curl * | sh*)",
+      "Bash(wget * | bash*)",
+      "Bash(eval *)",
+      "Bash(mkfs *)",
+      "Bash(dd if=*)",
+      "Bash(shutdown *)",
+      "Bash(reboot *)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)",
+      "Edit(.claude/settings.json)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Write(.claude/settings.json)"
+    ]
+  }
+}
+```
+
+Based on the detected project type (Step 5), **append** framework-specific allow rules:
+
+- **Node.js/TypeScript**: `Bash(tsc *)`, `Bash(eslint *)`, `Bash(prettier *)`, `Bash(jest *)`, `Bash(vitest *)`
+- **Python**: `Bash(pytest *)`, `Bash(python *)`, `Bash(pip install *)`
+- **Go**: `Bash(go *)`
+- **Rust**: `Bash(cargo *)`
+- **Java/Kotlin**: `Bash(gradlew *)`, `Bash(mvn *)`
+- **React Native**: `Bash(pod install *)`, `Bash(react-native *)`
+
+Also ensure `.claude/settings.json` is **NOT** in `.gitignore` — this file should be shared with the team.
+
+## Step 7: Verification
 
 Report setup results:
 
@@ -116,11 +204,18 @@ Report setup results:
 ✅ OpenSpec initialized: openspec/
 ✅ CLAUDE.md: configured
 ✅ .gitignore: updated
+✅ .claude/settings.json: permissions configured (auto mode + allow/deny rules)
 
 📋 Detected project:
    Language: {detected}
    Test framework: {detected}
    Formatter: {detected}
 
+🔒 Permission rules:
+   Allow: {N} rules (dev commands auto-approved)
+   Deny:  {N} rules (destructive ops blocked)
+   Mode:  auto (AI risk assessment for unlisted commands)
+
 🚀 Ready! Use /openspec-autodev:auto-dev <feature-name> to start developing.
+   All automated phases will run without permission prompts.
 ```
