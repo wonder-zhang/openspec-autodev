@@ -1,4 +1,8 @@
 {
+  "name": "openspec-autodev",
+  "owner": {
+    "name": "openspec-autodev contributors"
+  },
   "plugins": [
     {
       "name": "openspec-autodev",
