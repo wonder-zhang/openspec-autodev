@@ -31,7 +31,7 @@ If NOT_INSTALLED:
 ```bash
 echo "📦 Installing Superpowers..."
 mkdir -p ~/.claude/skills
-git clone https://github.com/josebenitezg/superpowers.git ~/.claude/skills/superpowers
+git clone https://github.com/obra/superpowers.git ~/.claude/skills/superpowers
 
 # Create skill symlinks
 cd ~/.claude/skills
