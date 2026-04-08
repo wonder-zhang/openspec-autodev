@@ -22,26 +22,31 @@ npm install -g @fission-ai/openspec@latest
 Verify: `openspec --version`
 
 ### 1.2 Check Superpowers
-Check if Superpowers skills exist:
+Check if Superpowers is installed via the Claude Code plugin system:
 ```bash
-ls ~/.claude/skills/superpowers/skills/ 2>/dev/null || echo "NOT_INSTALLED"
+# Check plugin system installation (primary method)
+ls ~/.claude/plugins/cache/claude-plugins-official/superpowers/*/skills/ 2>/dev/null && echo "INSTALLED_VIA_PLUGIN" || echo "NOT_INSTALLED_PLUGIN"
 ```
 
-If NOT_INSTALLED:
-```bash
-echo "📦 Installing Superpowers..."
-mkdir -p ~/.claude/skills
-git clone https://github.com/obra/superpowers.git ~/.claude/skills/superpowers
+Also check `~/.claude/plugins/installed_plugins.json` for an entry matching `superpowers@claude-plugins-official`.
 
-# Create skill symlinks
-cd ~/.claude/skills
-for skill in brainstorming using-git-worktrees writing-plans \
-  test-driven-development requesting-code-review \
-  finishing-a-development-branch subagent-driven-development \
-  systematic-debugging verification-before-completion; do
-  ln -sf superpowers/skills/$skill $skill 2>/dev/null || true
-done
-echo "✅ Superpowers installed"
+On Windows, the path uses backslashes:
+```powershell
+Test-Path "$env:USERPROFILE\.claude\plugins\cache\claude-plugins-official\superpowers\*\skills"
+```
+
+If **both checks** show NOT_INSTALLED, tell the user:
+```
+📦 Superpowers is not installed. Please install it via:
+   /plugin marketplace install superpowers
+   (from the claude-plugins-official marketplace)
+```
+
+**Do NOT attempt to git clone or create symlinks** — Superpowers should be managed by Claude Code's plugin system.
+
+If Superpowers IS found via the plugin system, report:
+```
+✅ Superpowers: installed via plugin system
 ```
 
 ### 1.3 Check Git
