@@ -34,8 +34,8 @@ git clone https://github.com/<your-repo>/openspec-autodev.git ~/.claude/plugins/
 ### Step 2：初始化项目
 
 在 Claude Code 中进入你的项目目录，执行：
-```
-/openspec-autodev:setup
+```/openspec-autodev:setup
+
 ```
 
 这会自动：
