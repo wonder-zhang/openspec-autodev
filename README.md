@@ -34,6 +34,7 @@ git clone https://github.com/<your-repo>/openspec-autodev.git ~/.claude/plugins/
 ### Step 2：初始化项目
 
 **推荐：跳过权限确认模式**
+
 为了在整个流程中不被打断，建议运行claude code 时使用：
 
 ```bash
