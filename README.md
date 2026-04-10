@@ -75,7 +75,47 @@ claude --dangerously-skip-permission
 | `/openspec-autodev:setup` | 一键初始化项目（首次使用必须执行） |
 | `/openspec-autodev:auto-dev <feature>` | 启动全自动开发工作流 |
 | `/openspec-autodev:resume` | 恢复中断的工作流 |
+| `/openspec-autodev:iterate <feature> [vN]` | 基于已完成功能进行迭代开发 |
+| `/openspec-autodev:bugfix <bug-description>` | 轻量级 Bug 修复（TDD + 追溯记录） |
 | `/openspec-autodev:parallel-dev <feature>` | 生成外部 CLI 并行执行脚本 |
+
+## 🔄 迭代开发模式
+
+当第一次 `auto-dev` 完成后需要迭代，使用 `iterate` 命令：
+
+```bash
+# 默认自动递增版本号
+/openspec-autodev:iterate user-search
+
+# 指定版本号
+/openspec-autodev:iterate user-search v3
+```
+
+`iterate` 与 `auto-dev` 的区别：
+- ✅ 从归档规格恢复上下文，不从零开始
+- ✅ 增量式 spec 更新（保留已有、只改变化部分）
+- ✅ 只分解 delta 任务，不重复已完成工作
+- ✅ 使用 `iter/<feature>-v<N>` 分支命名
+
+## 🐛 Bug 修复模式
+
+对于简单的 bug 修复，使用轻量级 `bugfix` 命令：
+
+```bash
+/openspec-autodev:bugfix 登录页空邮箱崩溃
+```
+
+精简的 3 步流程：
+```
+根因分析 → TDD 修复 → 提交确认
+  自动        自动       人工
+```
+
+特点：
+- ✅ 无需完整 spec generation
+- ✅ 创建独立 `fix/<bug-name>` 分支
+- ✅ 生成轻量级 OpenSpec 记录，方便追溯
+- ✅ 严格 TDD：先写复现测试，再修复
 
 ## ⚡ 并行执行模式
 

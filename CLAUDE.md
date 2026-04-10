@@ -39,14 +39,34 @@ One legitimate human wait point:
 - **PAUSE: Show summary, wait for user confirmation ①**
 - User confirms → Final report → Workflow complete
 
+## Iterate Workflow (for subsequent iterations on completed features)
+- Uses `/openspec-autodev:iterate <feature> [vN]` — version number optional, auto-detects if omitted
+- Reads archived specs from `openspec/archive/<feature>/` as baseline context
+- Performs difference analysis: [UNCHANGED] / [MODIFIED] / [NEW] items
+- Incremental spec updates (delta only, not from scratch)
+- Branch: `iter/<feature>-v<N>`, Worktree: `../project-<feature>-v<N>`
+- Phase 2-4 follow the same parallel batch TDD flow as auto-dev
+- Sub-agents MUST preserve existing functionality unless explicitly specified to change
+
+## Bugfix Workflow (lightweight bug fix with TDD + traceability)
+- Uses `/openspec-autodev:bugfix <bug-description>`
+- Creates independent `fix/<bug-slug>` branch
+- 4 steps: Root Cause Analysis → OpenSpec Record → TDD Fix → Commit + Summary
+- Uses `systematic-debugging` for root cause analysis
+- Generates lightweight OpenSpec records (proposal.md + specs.md) for traceability
+- Strict TDD: RED (write reproducing test) → GREEN (minimal fix) → REFACTOR (regression check)
+- Commit format: `fix(<scope>): <description>`
+- Single agent, serial execution — no parallel batches
+- ONE human checkpoint: after fix is applied, wait for user confirmation
+
 ## Technical Constraints
 
 ### Code Standards
 - Language/Framework: [Auto-detected or user-specified]
 - Test framework: [Auto-detected or user-specified]
 - All new files MUST have tests
-- Commit: `feat(<feature>): <description>`
+- Commit: `feat(<feature>): <description>` (auto-dev/iterate) or `fix(<scope>): <description>` (bugfix)
 
 ### OpenSpec: NEVER modify `openspec/specs/` directly
 ### Security: NEVER output Secrets/Tokens; NEVER modify .env/credentials/.pem/.key/.crt/.claude/settings.json
-### State: Update `.claude/workflow-state.json` after each phase; check on session start
+### State: Update `.claude/workflow-state.json` after each phase/step; check on session start

@@ -24,10 +24,23 @@ if [ -f .claude/workflow-state.json ]; then
   FEATURE=$(grep -o '"feature"[[:space:]]*:[[:space:]]*"[^"]*"' .claude/workflow-state.json | head -1 | sed 's/.*: *"\(.*\)"/\1/')
   PHASE=$(grep -o '"currentPhase"[[:space:]]*:[[:space:]]*[0-9]*' .claude/workflow-state.json | head -1 | sed 's/.*: *//')
   STATUS=$(grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' .claude/workflow-state.json | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  WORKFLOW_TYPE=$(grep -o '"workflowType"[[:space:]]*:[[:space:]]*"[^"]*"' .claude/workflow-state.json | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  STEP=$(grep -o '"currentStep"[[:space:]]*:[[:space:]]*[0-9]*' .claude/workflow-state.json | head -1 | sed 's/.*: *//')
+  VERSION=$(grep -o '"iterationVersion"[[:space:]]*:[[:space:]]*[0-9]*' .claude/workflow-state.json | head -1 | sed 's/.*: *//')
 
   if [ "$STATUS" != "completed" ] && [ "$STATUS" != "" ]; then
     echo ""
-    echo "🔄 Incomplete workflow: $FEATURE (Phase $PHASE, Status: $STATUS)"
+    case "$WORKFLOW_TYPE" in
+      iterate)
+        echo "🔄 Incomplete iteration workflow: $FEATURE (v$VERSION, Phase $PHASE, Status: $STATUS)"
+        ;;
+      bugfix)
+        echo "🐛 Incomplete bugfix workflow: $FEATURE (Step $STEP, Status: $STATUS)"
+        ;;
+      *)
+        echo "🔄 Incomplete workflow: $FEATURE (Phase $PHASE, Status: $STATUS)"
+        ;;
+    esac
     echo "   → Use /openspec-autodev:resume to continue"
     echo "   → Or reply 'abort' to clean up"
   fi
