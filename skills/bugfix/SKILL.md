@@ -215,7 +215,7 @@ The `<scope>` should be the module or component where the bug was fixed (e.g., `
   修改文件：<list of modified files>
   修改行数：+X / -Y
 
-📄 追溯记录：openspec/archive/<bug-slug>/
+📄 追溯记录：openspec/changes/archive/（执行 openspec list 查看完整路径）
 
 ---
 确认无问题，回复"确认完成"结束修复。
@@ -234,7 +234,7 @@ After user confirms:
 ⏱️ 总耗时：约 X 分钟
 🌿 分支：fix/<bug-slug>
 📊 回归：X/X 测试通过
-📄 记录：openspec/archive/<bug-slug>/
+📄 记录：openspec/changes/archive/（执行 openspec list 查看完整路径）
 ```
 
 Update workflow-state.json: `status: "completed"`

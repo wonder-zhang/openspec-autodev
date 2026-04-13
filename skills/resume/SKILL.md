@@ -92,8 +92,8 @@ If the user provided an argument ($ARGUMENTS), use it directly. Otherwise, wait 
 #### iterate workflows (workflowType = "iterate"):
 
 Same phase-based logic as auto-dev, with these differences:
-- Phase 0: Re-display the difference analysis (read from archived + delta specs)
-- Phase 1: Re-execute incremental spec generation (idempotent — copies from archive are safe to repeat)
+- Phase 0: Re-display the difference analysis (locate archived specs via glob `openspec/changes/archive/*-<feature>*`)
+- Phase 1: Re-execute incremental spec generation (idempotent — copies from archive dir are safe to repeat)
 - Phase 2-4: Same as auto-dev recovery
 - Branch name uses `iter/<feature>-v<N>` pattern
 - Worktree path uses `../project-<feature>-v<N>`

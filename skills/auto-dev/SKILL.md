@@ -233,7 +233,7 @@ git worktree remove ./project-<feature>
 ⚠️ 跳过的任务（需人工处理）：
   <if any>
 
-📄 规格文档：openspec/archive/<feature>/
+📄 规格文档：openspec/changes/archive/（执行 openspec list 查看完整路径）
 
 ---
 确认无问题，回复"确认完成"结束流程。

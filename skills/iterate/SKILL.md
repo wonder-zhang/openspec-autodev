@@ -60,22 +60,30 @@ Write to `.claude/workflow-state.json`:
 
 ## Step 1: Verify Archive Exists
 
-Check that the feature has been previously developed and archived:
+Check that the feature has been previously developed and archived.
+OpenSpec CLI archives changes to `openspec/changes/archive/YYYY-MM-DD-<name>/`, so use glob matching to find the latest archived version:
 ```bash
-ls openspec/archive/<feature-name>/
+# Find the latest archive for this feature (matches both original and iteration archives)
+# Pattern matches: *-<feature-name> and *-<feature-name>-v<N>
+ARCHIVE_DIR=$(ls -dt openspec/changes/archive/*-<feature-name>* 2>/dev/null | head -1)
+if [ -z "$ARCHIVE_DIR" ]; then
+  echo "No archive found for <feature-name>"
+fi
 ```
 
-If the archive does NOT exist, check `openspec/changes/<feature-name>/`:
+If the archive does NOT exist (`$ARCHIVE_DIR` is empty), check `openspec/changes/<feature-name>/`:
 - If changes exist → the feature is still in progress, suggest using `/openspec-autodev:resume` instead
 - If neither exists → STOP and tell the user: `No prior development found for "<feature-name>". Use /openspec-autodev:auto-dev <feature-name> for first-time development.`
+
+**Store `$ARCHIVE_DIR` for use in subsequent steps.**
 
 ## Step 2: Difference Analysis (Phase 0) — Human Checkpoint
 
 ### 2.1 Load Archived Context
-Read and summarize the archived specs:
-- `openspec/archive/<feature-name>/specs.md` — what was specified
-- `openspec/archive/<feature-name>/design.md` — how it was designed
-- `openspec/archive/<feature-name>/tasks.md` — what tasks were completed
+Read and summarize the archived specs (from `$ARCHIVE_DIR` found in Step 1):
+- `$ARCHIVE_DIR/specs/` directory or `$ARCHIVE_DIR/specs.md` — what was specified
+- `$ARCHIVE_DIR/design.md` — how it was designed
+- `$ARCHIVE_DIR/tasks.md` — what tasks were completed
 
 ### 2.2 Analyze Current Codebase
 Scan the existing implementation:
@@ -114,13 +122,19 @@ Update workflow-state.json: `currentPhase: 0, status: "waiting_confirmation"`
 ## Step 3: Incremental Spec Generation (Phase 1)
 
 ### 3.1 Restore Change Directory
-Copy archived specs back to a new change directory:
+Copy archived specs back to a new change directory (using `$ARCHIVE_DIR` from Step 1):
 ```bash
 mkdir -p openspec/changes/<feature-name>-v<N>/
-cp openspec/archive/<feature-name>/proposal.md openspec/changes/<feature-name>-v<N>/
-cp openspec/archive/<feature-name>/specs.md openspec/changes/<feature-name>-v<N>/
-cp openspec/archive/<feature-name>/design.md openspec/changes/<feature-name>-v<N>/
-cp openspec/archive/<feature-name>/tasks.md openspec/changes/<feature-name>-v<N>/
+cp "$ARCHIVE_DIR"/proposal.md openspec/changes/<feature-name>-v<N>/ 2>/dev/null
+# Copy specs — handle both flat file (specs.md) and directory structure (specs/)
+if [ -d "$ARCHIVE_DIR/specs" ]; then
+  cp -r "$ARCHIVE_DIR"/specs openspec/changes/<feature-name>-v<N>/
+fi
+if [ -f "$ARCHIVE_DIR/specs.md" ]; then
+  cp "$ARCHIVE_DIR"/specs.md openspec/changes/<feature-name>-v<N>/
+fi
+cp "$ARCHIVE_DIR"/design.md openspec/changes/<feature-name>-v<N>/ 2>/dev/null
+cp "$ARCHIVE_DIR"/tasks.md openspec/changes/<feature-name>-v<N>/ 2>/dev/null
 ```
 
 ### 3.2 Incrementally Update Specs
@@ -303,7 +317,7 @@ git worktree remove ./project-<feature-name>-v<N>
 ⚠️ 跳过的任务（需人工处理）：
   <if any>
 
-📄 规格文档：openspec/archive/<feature-name>-v<N>/
+📄 规格文档：openspec/changes/archive/（执行 openspec list 查看完整路径）
 
 ---
 确认无问题，回复"确认完成"结束流程。

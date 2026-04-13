@@ -41,7 +41,7 @@ One legitimate human wait point:
 
 ## Iterate Workflow (for subsequent iterations on completed features)
 - Uses `/openspec-autodev:iterate <feature> [vN]` — version number optional, auto-detects if omitted
-- Reads archived specs from `openspec/archive/<feature>/` as baseline context
+- Reads archived specs from `openspec/changes/archive/*-<feature>/` as baseline context
 - Performs difference analysis: [UNCHANGED] / [MODIFIED] / [NEW] items
 - Incremental spec updates (delta only, not from scratch)
 - Branch: `iter/<feature>-v<N>`, Worktree: `../project-<feature>-v<N>`
