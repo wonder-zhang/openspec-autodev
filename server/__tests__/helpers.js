@@ -43,10 +43,11 @@ function createTestApp(db) {
   app.use(express.json());
   app.locals.db = db;
 
+  app.use("/api/v1/projects", require("../routes/projects"));
+
   const authMiddleware = require("../middleware/auth");
   app.use("/api/v1", authMiddleware);
 
-  app.use("/api/v1/projects", require("../routes/projects"));
   app.use("/api/v1/sessions", require("../routes/sessions"));
   app.use("/api/v1/claims", require("../routes/claims"));
   app.use("/api/v1/specs", require("../routes/specs"));
