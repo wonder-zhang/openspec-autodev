@@ -8,10 +8,31 @@ This project uses OpenSpec + Superpowers fully automated development workflow (v
 One legitimate human wait point:
 1. After Phase 4: Show development summary, wait for user confirmation to finalize
 
+## Multi-Session Collaboration
+
+This project supports multiple developers (or Claude Code sessions) working simultaneously.
+
+### Session Isolation
+- Each session writes state to `.claude/sessions/<session-id>/` — NOT `.claude/` directly
+- Session ID is stored in `.claude/current-session-id` (gitignored, per-workspace)
+- Session registration files (`.claude/sessions/<id>.json`) track who is doing what
+
+### File Ownership
+- During Phase 2, each session claims the files its micro-tasks will modify
+- `PreToolUse` hook blocks edits to files claimed by other active sessions
+- Use `/openspec-autodev:claim` to manage file ownership manually
+- Use `/openspec-autodev:status` to see all active sessions and file claims
+
+### Conflict Prevention Rules
+- Two sessions MUST NOT modify the same file simultaneously
+- If file overlap is detected during Phase 2, the session must negotiate with the other session's owner
+- Stale sessions (inactive > 30 min) have their claims auto-released
+- Each session should use its own Git worktree/branch for isolation
+
 ## Phase 0: Requirements Clarification (Only open interaction phase)
 - Use `brainstorming` skill, execute `/opsx:explore <feature-name>`
 - Display proposal.md, wait for explicit "confirm"
-- Write initial state to `.claude/workflow-state.json`
+- Write initial state to `${SESSION_DIR}/workflow-state.json`
 
 ## Phase 1: Spec Generation (Automatic)
 - Execute `/opsx:new <feature-name>` then `/opsx:ff`
@@ -22,6 +43,7 @@ One legitimate human wait point:
 - `using-git-worktrees`: Create feat/<feature> branch and Worktree
 - `writing-plans`: Decompose tasks.md into 2-5 min micro-tasks
 - **Dependency analysis**: Analyze micro-task dependencies + file ownership → generate parallel batches
+- **File claim registration**: Register all target files in session, check for cross-session conflicts
 - Sub-agents MUST read specs.md and design.md, NEVER rely on conversation history
 
 ## Phase 3: TDD Execution (Automatic, parallel-batch sub-agents)
@@ -36,6 +58,7 @@ One legitimate human wait point:
 ## Phase 4: Wrap-up and Summary
 - `verification-before-completion` + `requesting-code-review`
 - `/opsx:archive <feature>` + `finishing-a-development-branch`
+- Release file claims, update session status
 - **PAUSE: Show summary, wait for user confirmation ①**
 - User confirms → Final report → Workflow complete
 
@@ -69,4 +92,5 @@ One legitimate human wait point:
 
 ### OpenSpec: NEVER modify `openspec/specs/` directly
 ### Security: NEVER output Secrets/Tokens; NEVER modify .env/credentials/.pem/.key/.crt/.claude/settings.json
-### State: Update `.claude/workflow-state.json` after each phase/step; check on session start
+### State: Update `${SESSION_DIR}/workflow-state.json` after each phase/step; check on session start
+### Sessions: NEVER modify another session's state files; use `/openspec-autodev:claim` for file negotiations
