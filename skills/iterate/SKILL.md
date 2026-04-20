@@ -45,10 +45,29 @@ git branch -a | grep -oE 'iter/<feature-name>-v([0-9]+)' | grep -oE 'v[0-9]+' | 
 ```
 If no prior iteration branch exists, default to `v2` (since `v1` is the original `auto-dev` run).
 
-Write to `.claude/workflow-state.json`:
+### Resolve Session Directory
+```bash
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_DIR=".claude/sessions/${SESSION_ID}"
+mkdir -p "${SESSION_DIR}"
+```
+
+If `.claude/current-session-id` does not exist, generate a new session:
+```bash
+SESSION_ID="$(whoami)-$(date +%s)"
+mkdir -p ".claude/sessions/${SESSION_ID}"
+echo "$SESSION_ID" > .claude/current-session-id
+```
+
+**All workflow state files go under `${SESSION_DIR}/` — NOT `.claude/` directly.**
+
+Check for conflicting sessions working on the same feature. If found, warn the user.
+
+Write to `${SESSION_DIR}/workflow-state.json`:
 ```json
 {
   "feature": "<feature-name>",
+  "sessionId": "<SESSION_ID>",
   "workflowType": "iterate",
   "iterationVersion": <N>,
   "currentPhase": 0,
@@ -57,6 +76,8 @@ Write to `.claude/workflow-state.json`:
   "executionMode": "parallel-batch"
 }
 ```
+
+Update `.claude/sessions/${SESSION_ID}.json`: set `feature`, `workflowType: "iterate"`, `status: "running"`, `phase: 0`.
 
 ## Step 1: Verify Archive Exists
 
@@ -115,7 +136,7 @@ Display to the user:
 
 Wait for user confirmation ("确认", "confirm", "开始", "没问题", "ok", "yes").
 
-Update workflow-state.json: `currentPhase: 0, status: "waiting_confirmation"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 0, status: "waiting_confirmation"`
 
 **This is the ONLY point where you wait for open-ended user input.** After confirmation, everything runs automatically until Phase 4 summary.
 
@@ -150,7 +171,7 @@ Based on the user's iteration requirements and the difference analysis:
 
 **Key principle: Only generate tasks for what's changing, not for what already works.**
 
-Update workflow-state.json: `currentPhase: 1, status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 1, status: "completed"`
 
 **Proceed to Step 4 immediately. Do NOT wait for user input.**
 
@@ -174,19 +195,23 @@ Spawn Task sub-agent with `writing-plans` skill:
 - Decompose into 2-5 minute micro-tasks
 - Each micro-task MUST include: file paths, estimated time, test conditions, acceptance criteria, **dependency relationships**, **target files**
 - For `[MODIFY]` tasks: include the existing file paths and what specifically to change
-- Write to `.claude/current-plan.md`
+- Write to `${SESSION_DIR}/current-plan.md`
 
 ### 4.3 Dependency Analysis & Parallel Batching
-Analyze `current-plan.md` to generate parallel execution batches (same logic as auto-dev):
+Analyze `${SESSION_DIR}/current-plan.md` to generate parallel execution batches (same logic as auto-dev):
 
 **Analysis rules:**
 1. If task B explicitly depends on task A → B goes into a later batch
 2. If two tasks modify the same file → they go into different batches (sequential)
 3. Tasks operating on different modules/layers with no dependencies → same batch (parallel)
 
-Generate batch plan and append to `current-plan.md`.
+Generate batch plan and append to `${SESSION_DIR}/current-plan.md`.
 
-Update workflow-state.json with `parallelBatches` array:
+### 4.4 Register File Claims
+Extract all target file paths from `${SESSION_DIR}/current-plan.md` and register as file claims in `.claude/sessions/${SESSION_ID}.json`. Check for conflicts with other active sessions before registering. If conflicts exist, warn the user and offer options (skip/force/abort).
+
+### 4.5 Update workflow state
+Update `${SESSION_DIR}/workflow-state.json` with `parallelBatches` array:
 ```json
 {
   "currentPhase": 2,
@@ -198,9 +223,11 @@ Update workflow-state.json with `parallelBatches` array:
 }
 ```
 
+Update session registration: `"phase": 2`
+
 ## Step 5: TDD Execution — Parallel Batch Mode (Phase 3)
 
-Update workflow-state.json: `currentPhase: 3, status: "running"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 3, status: "running"`
 
 **For EACH batch in parallelBatches, in order:**
 
@@ -252,12 +279,12 @@ If tests fail after implementation:
 2. Run `git diff` to verify no file conflicts between sub-agents
 3. If conflicts detected → queue conflicting tasks for serial re-execution
 4. Failed tasks: decide to retry (add to next batch) or skip
-5. Update workflow-state.json: batch status → "completed"
+5. Update `${SESSION_DIR}/workflow-state.json`: batch status → "completed"
 6. Move to next batch
 
 **Continue until all batches are processed.**
 
-Update workflow-state.json: `currentPhase: 3, status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 3, status: "completed"`
 
 ## Step 6: Development Wrap-up (Phase 4)
 
@@ -289,6 +316,9 @@ git push origin iter/<feature-name>-v<N>
 cd ..
 git worktree remove ./project-<feature-name>-v<N>
 ```
+
+### 6.6 Release File Claims
+Clear this session's file claims: update `.claude/sessions/${SESSION_ID}.json` with `"fileClaims": [], "status": "completed"`.
 
 ## ⏸️ Step 7: PAUSE — Development Summary (Human Checkpoint ①)
 
@@ -340,4 +370,6 @@ After user confirms:
 🔄 迭代次数：v<N>
 ```
 
-Update workflow-state.json: `status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `status: "completed"`
+
+Update session registration: `"status": "completed", "phase": null, "fileClaims": []`

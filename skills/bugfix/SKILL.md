@@ -36,11 +36,28 @@ For example:
 git checkout -b fix/<bug-slug>
 ```
 
-### 0.3 Write Workflow State
-Write to `.claude/workflow-state.json`:
+### 0.3 Resolve Session Directory
+```bash
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_DIR=".claude/sessions/${SESSION_ID}"
+mkdir -p "${SESSION_DIR}"
+```
+
+If `.claude/current-session-id` does not exist, generate a new session:
+```bash
+SESSION_ID="$(whoami)-$(date +%s)"
+mkdir -p ".claude/sessions/${SESSION_ID}"
+echo "$SESSION_ID" > .claude/current-session-id
+```
+
+**All workflow state files go under `${SESSION_DIR}/` — NOT `.claude/` directly.**
+
+### 0.4 Write Workflow State
+Write to `${SESSION_DIR}/workflow-state.json`:
 ```json
 {
   "feature": "<bug-slug>",
+  "sessionId": "<SESSION_ID>",
   "workflowType": "bugfix",
   "bugDescription": "$ARGUMENTS",
   "currentStep": 0,
@@ -49,6 +66,8 @@ Write to `.claude/workflow-state.json`:
   "branch": "fix/<bug-slug>"
 }
 ```
+
+Update `.claude/sessions/${SESSION_ID}.json`: set `feature: "<bug-slug>"`, `workflowType: "bugfix"`, `status: "running"`, `branch: "fix/<bug-slug>"`.
 
 ## Step 1: Root Cause Analysis
 
@@ -77,7 +96,7 @@ Use the `systematic-debugging` skill to perform a 4-stage root cause analysis:
 - Identify the exact file(s) and line(s) that need to change
 - Assess impact scope (what else might be affected by this bug or the fix)
 
-Update workflow-state.json: `currentStep: 1, rootCause: "<brief description>"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentStep: 1, rootCause: "<brief description>"`
 
 ## Step 2: Lightweight OpenSpec Record
 
@@ -122,7 +141,7 @@ mkdir -p openspec/changes/<bug-slug>/
 <list of files that will be modified>
 ```
 
-Update workflow-state.json: `currentStep: 2`
+Update `${SESSION_DIR}/workflow-state.json`: `currentStep: 2`
 
 ## Step 3: TDD Fix Cycle
 
@@ -176,7 +195,7 @@ If any pre-existing tests fail:
 2. Adjust the fix
 3. Max 3 retries. If still failing after 3 retries, STOP and report to user
 
-Update workflow-state.json: `currentStep: 3, status: "fix_applied"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentStep: 3, status: "fix_applied"`
 
 ## Step 4: Archive, Commit & Summary
 
@@ -237,4 +256,5 @@ After user confirms:
 📄 记录：openspec/changes/archive/（执行 openspec list 查看完整路径）
 ```
 
-Update workflow-state.json: `status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `status: "completed"`
+Update session registration: `"status": "completed", "fileClaims": []`

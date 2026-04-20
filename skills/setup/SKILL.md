@@ -86,9 +86,12 @@ If the project already has a `CLAUDE.md`, **append** the plugin's content under 
 Ensure the following entries exist in `.gitignore` (create if needed):
 
 ```
-# OpenSpec AutoDev workflow state
-.claude/workflow-state.json
+# OpenSpec AutoDev workflow state (session-based)
+.claude/sessions/
+.claude/current-session-id
 .claude/workflow-metrics.log
+# Legacy (pre-session) state files
+.claude/workflow-state.json
 .claude/current-plan.md
 .claude/results/
 ```
@@ -218,4 +221,9 @@ Report setup results:
 
 🚀 Ready! Use /openspec-autodev:auto-dev <feature-name> to start developing.
    All automated phases will run without permission prompts.
+
+👥 Multi-person support:
+   Each session gets isolated state under .claude/sessions/
+   Use /openspec-autodev:status to see all active sessions.
+   Use /openspec-autodev:claim to manage file ownership.
 ```

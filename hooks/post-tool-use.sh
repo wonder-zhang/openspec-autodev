@@ -1,8 +1,15 @@
 #!/bin/bash
 # openspec-autodev: PostToolUse Hook
-# Auto-format with Prettier + auto-fix with ESLint after file edits
+# Auto-format with Prettier + auto-fix with ESLint after file edits.
+# Updates session heartbeat for multi-session liveness tracking.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/session-utils.sh"
 
 FILE="$1"
+
+# Update session heartbeat
+update_heartbeat
 
 if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
   exit 0

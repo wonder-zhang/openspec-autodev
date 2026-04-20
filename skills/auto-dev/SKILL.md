@@ -34,18 +34,51 @@ All phases after Phase 0 run **fully automatically**. Any interactive prompt wil
 4. **Last resort**: pipe `echo y |` before the command, or prefix with `CI=true`
 5. **Framework scaffolding** (create-react-app, Vite, Next.js, etc.): always use `npx -y <pkg> ./` with all required flags to skip interactive prompts
 
-## Step 0: Init workflow state
+## Step 0: Init workflow state & session
 
-Write to `.claude/workflow-state.json`:
+### 0.1 Resolve Session Directory
+Read the current session ID and derive the session directory:
+```bash
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_DIR=".claude/sessions/${SESSION_ID}"
+mkdir -p "${SESSION_DIR}"
+```
+
+If `.claude/current-session-id` does not exist, generate a new session:
+```bash
+SESSION_ID="$(whoami)-$(date +%s)"
+mkdir -p ".claude/sessions/${SESSION_ID}"
+echo "$SESSION_ID" > .claude/current-session-id
+```
+
+**All workflow state files go under `${SESSION_DIR}/` — NOT `.claude/` directly.**
+
+### 0.2 Check for conflicting sessions
+Read all `.claude/sessions/*.json` files. If another active session (lastActivity within 30 min) is working on the same feature name, WARN the user:
+```
+⚠️ Session <other-id> (<user>) is already working on "<feature>".
+   Consider using a different feature name, or coordinate via /openspec-autodev:status.
+```
+
+### 0.3 Write workflow state
+Write to `${SESSION_DIR}/workflow-state.json`:
 ```json
 {
   "feature": "$ARGUMENTS",
+  "sessionId": "<SESSION_ID>",
   "currentPhase": 0,
   "status": "running",
   "startedAt": "<current ISO timestamp>",
   "executionMode": "parallel-batch"
 }
 ```
+
+### 0.4 Update session registration
+Update `.claude/sessions/${SESSION_ID}.json` with:
+- `"feature": "$ARGUMENTS"`
+- `"workflowType": "auto-dev"`
+- `"status": "running"`
+- `"phase": 0`
 
 ## Step 1: Requirements Clarification (Phase 0)
 
@@ -57,7 +90,7 @@ Then execute:
 
 Display the generated `proposal.md` to the user and wait for explicit confirmation ("确认", "confirm", "开始", "没问题", "ok", "yes").
 
-Update workflow-state.json: `currentPhase: 0, status: "waiting_confirmation"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 0, status: "waiting_confirmation"`
 
 **This is the ONLY point where you wait for open-ended user input.** After confirmation, everything runs automatically until Phase 4 summary.
 
@@ -75,7 +108,7 @@ Verify all 4 files exist and are non-empty:
 - `openspec/changes/<feature>/design.md`
 - `openspec/changes/<feature>/tasks.md`
 
-Update workflow-state.json: `currentPhase: 1, status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 1, status: "completed"`
 
 **Proceed to Step 3 immediately. Do NOT wait for user input.**
 
@@ -92,17 +125,17 @@ Spawn Task sub-agent with `writing-plans` skill:
 - Read `openspec/changes/<feature>/tasks.md`
 - Decompose into 2-5 minute micro-tasks
 - Each micro-task MUST include: file paths, estimated time, test conditions, acceptance criteria, **dependency relationships**, **target files**
-- Write to `.claude/current-plan.md`
+- Write to `${SESSION_DIR}/current-plan.md`
 
 ### 3.3 Dependency Analysis & Parallel Batching
-Analyze `current-plan.md` to generate parallel execution batches:
+Analyze `${SESSION_DIR}/current-plan.md` to generate parallel execution batches:
 
 **Analysis rules:**
 1. If task B explicitly depends on task A → B goes into a later batch
 2. If two tasks modify the same file → they go into different batches (sequential)
 3. Tasks operating on different modules/layers with no dependencies → same batch (parallel)
 
-Generate batch plan and append to `current-plan.md`:
+Generate batch plan and append to `${SESSION_DIR}/current-plan.md`:
 ```
 === Parallel Execution Plan ===
 Batch 1 (parallel): T1-1, T2-1, T3-1  ← no dependencies
@@ -111,7 +144,27 @@ Batch 3 (serial):   T1-3 → T4-1       ← serial chain
 Batch 4 (parallel): T3-2, T5-1        ← depends on Batch 2
 ```
 
-Update workflow-state.json with `parallelBatches` array:
+### 3.4 Register File Claims
+Extract all target file paths from `${SESSION_DIR}/current-plan.md` and register them as file claims for this session. Update `.claude/sessions/${SESSION_ID}.json`:
+```json
+{
+  "fileClaims": ["src/feature/file1.ts", "src/feature/file2.ts", ...]
+}
+```
+
+Before registering, check for conflicts with other active sessions. If any file is already claimed:
+```
+⚠️ File claim conflict:
+  src/shared/utils.ts is claimed by session <other-id> (<user>, <feature>)
+
+Options:
+  1. Skip this file (adjust micro-task to avoid it)
+  2. Force claim (other session will be warned)
+  3. Abort and coordinate via /openspec-autodev:status
+```
+
+### 3.5 Update workflow state
+Update `${SESSION_DIR}/workflow-state.json` with `parallelBatches` array:
 ```json
 {
   "currentPhase": 2,
@@ -123,9 +176,13 @@ Update workflow-state.json with `parallelBatches` array:
 }
 ```
 
+Update session registration: `"phase": 2`
+
 ## Step 4: TDD Execution — Parallel Batch Mode (Phase 3)
 
-Update workflow-state.json: `currentPhase: 3, status: "running"`
+Update session registration: `"phase": 3`
+
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 3, status: "running"`
 
 **For EACH batch in parallelBatches, in order:**
 
@@ -144,7 +201,7 @@ You are a TDD development sub-agent. Execute the following micro-task strictly.
 - openspec/changes/<feature>/design.md
 
 ## Your Micro-Task
-<specific micro-task description from current-plan.md>
+<specific micro-task description from ${SESSION_DIR}/current-plan.md>
 
 ## TDD Protocol (STRICT)
 1. RED: Write a failing test first. Run tests — confirm FAIL.
@@ -172,12 +229,12 @@ If tests fail after implementation:
 2. Run `git diff` to verify no file conflicts between sub-agents
 3. If conflicts detected → queue conflicting tasks for serial re-execution
 4. Failed tasks: decide to retry (add to next batch) or skip
-5. Update workflow-state.json: batch status → "completed"
+5. Update `${SESSION_DIR}/workflow-state.json`: batch status → "completed"
 6. Move to next batch
 
 **Continue until all batches are processed.**
 
-Update workflow-state.json: `currentPhase: 3, status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `currentPhase: 3, status: "completed"`
 
 ## Step 5: Development Wrap-up (Phase 4)
 
@@ -205,6 +262,15 @@ git commit -m "feat(<feature>): <auto-generated description>"
 git push origin feat/<feature>
 cd ..
 git worktree remove ./project-<feature>
+```
+
+### 5.5 Release File Claims
+Clear this session's file claims by updating `.claude/sessions/${SESSION_ID}.json`:
+```json
+{
+  "fileClaims": [],
+  "status": "completed"
+}
 ```
 
 ## ⏸️ Step 6: PAUSE — Development Summary (Human Checkpoint ①)
@@ -255,4 +321,6 @@ After user confirms:
 📊 覆盖率：XX%（X/X 测试通过）
 ```
 
-Update workflow-state.json: `status: "completed"`
+Update `${SESSION_DIR}/workflow-state.json`: `status: "completed"`
+
+Update session registration: `"status": "completed", "phase": null, "fileClaims": []`
