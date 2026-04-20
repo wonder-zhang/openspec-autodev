@@ -39,7 +39,7 @@ git clone https://github.com/<your-repo>/openspec-autodev.git ~/.claude/plugins/
 为了在整个流程中不被打断，建议运行claude code 时使用：
 
 ```bash
-claude --dangerously-skip-permission
+claude --dangerously-skip-permissions
 ```
 >当然，如果你不想使用这个flag，在项目初始化的过程中也会通过`.claude/settings.json`中加入一些细粒度的权限来跳过指定的权限确认弹窗。
 
