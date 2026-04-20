@@ -9,5 +9,8 @@ Thumbs.db
 # Node
 node_modules/
 
+# Server data
+server/data/
+
 # Logs
 *.log
