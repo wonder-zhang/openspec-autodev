@@ -307,3 +307,86 @@ sys.exit(1)  # active
     fi
   done
 }
+
+# ============================================================
+# Remote Coordination API Support
+# ============================================================
+
+COORD_ENABLED="false"
+COORD_SERVER=""
+COORD_PROJECT_ID=""
+COORD_API_KEY=""
+COORD_TIMEOUT=3
+
+load_coordination_config() {
+  local config_file=".claude/coordination.json"
+  if [ ! -f "$config_file" ]; then
+    COORD_ENABLED="false"
+    return
+  fi
+
+  if command -v node &>/dev/null; then
+    eval "$(node -e "
+      try {
+        const c = JSON.parse(require('fs').readFileSync('.claude/coordination.json', 'utf8'));
+        console.log('COORD_ENABLED=' + (c.enabled ? 'true' : 'false'));
+        console.log('COORD_SERVER=' + (c.server || ''));
+        console.log('COORD_PROJECT_ID=' + (c.projectId || ''));
+        console.log('COORD_API_KEY=' + (c.apiKey || ''));
+        console.log('COORD_TIMEOUT=' + (c.timeout ? Math.ceil(c.timeout / 1000) : 3));
+      } catch(e) {
+        console.log('COORD_ENABLED=false');
+      }
+    " 2>/dev/null)"
+  elif command -v python3 &>/dev/null; then
+    eval "$(python3 -c "
+import json
+try:
+    c = json.load(open('.claude/coordination.json'))
+    print(f\"COORD_ENABLED={'true' if c.get('enabled') else 'false'}\")
+    print(f\"COORD_SERVER={c.get('server', '')}\")
+    print(f\"COORD_PROJECT_ID={c.get('projectId', '')}\")
+    print(f\"COORD_API_KEY={c.get('apiKey', '')}\")
+    t = c.get('timeout', 3000)
+    print(f\"COORD_TIMEOUT={-(-t // 1000)}\")
+except:
+    print('COORD_ENABLED=false')
+" 2>/dev/null)"
+  fi
+}
+
+coord_api() {
+  local method="$1"
+  local path="$2"
+  local body="$3"
+
+  if [ "$COORD_ENABLED" != "true" ]; then
+    return 1
+  fi
+
+  local curl_args=(
+    -s -m "$COORD_TIMEOUT"
+    -X "$method"
+    -H "Authorization: Bearer ${COORD_API_KEY}"
+    -H "X-Project: ${COORD_PROJECT_ID}"
+    -H "Content-Type: application/json"
+  )
+
+  if [ -n "$body" ]; then
+    curl_args+=(-d "$body")
+  fi
+
+  curl "${curl_args[@]}" "${COORD_SERVER}${path}" 2>/dev/null
+}
+
+coord_offline_warning() {
+  local marker=".claude/.coord-offline"
+  if [ ! -f "$marker" ]; then
+    echo "⚠️ Coordination server unreachable, using local mode. Remote claims may be stale."
+    touch "$marker" 2>/dev/null
+  fi
+}
+
+coord_online_clear() {
+  rm -f ".claude/.coord-offline" 2>/dev/null
+}

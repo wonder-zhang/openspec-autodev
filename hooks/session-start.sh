@@ -11,6 +11,9 @@ echo "=== OpenSpec AutoDev ==="
 # --- Session Management ---
 mkdir -p .claude/sessions
 
+# Load coordination config
+load_coordination_config
+
 # Clean up stale sessions (inactive > 30 min)
 cleanup_stale_sessions
 
@@ -19,9 +22,43 @@ SID=$(generate_session_id)
 register_session "$SID"
 echo "📍 Session: ${SID}"
 
-# Show other active sessions
+# Remote registration (if coordination enabled)
+if [ "$COORD_ENABLED" = "true" ]; then
+  local_user=$(whoami 2>/dev/null || echo "unknown")
+  REMOTE_RESULT=$(coord_api POST "/api/v1/sessions" \
+    "{\"id\": \"${SID}\", \"user\": \"${local_user}\"}")
+  if [ -n "$REMOTE_RESULT" ]; then
+    coord_online_clear
+    echo "🌐 Registered with coordination server"
+  else
+    coord_offline_warning
+  fi
+fi
+
+# Show active sessions
 echo "--- Active Sessions ---"
-list_active_sessions
+if [ "$COORD_ENABLED" = "true" ]; then
+  REMOTE_SESSIONS=$(coord_api GET "/api/v1/sessions")
+  if [ -n "$REMOTE_SESSIONS" ] && command -v node &>/dev/null; then
+    coord_online_clear
+    node -e "
+      const sessions = JSON.parse(process.argv[1]);
+      if (sessions.length === 0) { console.log('  No active sessions.'); process.exit(0); }
+      for (const s of sessions) {
+        const marker = s.id === '${SID}' ? ' ← (you)' : '';
+        const claims = (s.file_claims || []).length;
+        const claimsStr = claims > 0 ? ' [' + claims + ' files claimed]' : '';
+        console.log('  👤 ' + s.user + ': ' + (s.feature || '-') +
+          ' (' + (s.workflow_type || '-') + ', ' + (s.phase != null ? 'Phase ' + s.phase : '-') +
+          ', ' + s.status + ')' + claimsStr + ' — ' + s.id + marker);
+      }
+    " "$REMOTE_SESSIONS" 2>/dev/null || list_active_sessions
+  else
+    list_active_sessions
+  fi
+else
+  list_active_sessions
+fi
 
 # --- OpenSpec Context ---
 if [ -f openspec/AGENTS.md ]; then

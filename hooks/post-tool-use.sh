@@ -11,6 +11,18 @@ FILE="$1"
 # Update session heartbeat
 update_heartbeat
 
+# Remote heartbeat (if coordination enabled)
+load_coordination_config
+if [ "$COORD_ENABLED" = "true" ]; then
+  MY_SID=$(get_session_id)
+  if [ -n "$MY_SID" ]; then
+    RESULT=$(coord_api PUT "/api/v1/sessions/${MY_SID}/heartbeat")
+    if [ -n "$RESULT" ]; then
+      coord_online_clear
+    fi
+  fi
+fi
+
 if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
   exit 0
 fi
