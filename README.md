@@ -8,7 +8,7 @@
 - **一键安装**：安装插件后运行 `/openspec-autodev:setup` 即可完成所有配置
 - **全自动开发**：从需求确认到代码完成，仅需一个人工确认节点
 - **并行执行**：基于依赖分析的多子代理并行批次执行，大幅缩短开发时间
-- **多人协作**：Session 隔离 + 文件占用声明，多人同时 Vibe Coding 同一项目不冲突
+- **多人协作**：Session 隔离 + 文件占用声明 + 可选的跨机器协调服务，多人同时 Vibe Coding 同一项目不冲突
 - **TDD 驱动**：严格遵循 Red-Green-Refactor 循环
 - **断点恢复**：工作流中断后可从断点继续，支持跨 Session 恢复
 - **安全防护**：自动阻止修改敏感文件，自动格式化代码
@@ -55,6 +55,7 @@ claude --dangerously-skip-permissions
 - ✅ 配置 `CLAUDE.md` 项目宪法
 - ✅ 更新 `.gitignore`（包含 Session 状态文件）
 - ✅ 自动检测项目语言和测试框架
+- ✅ 可选：配置跨机器协调服务（多人远程协作时需要）
 
 ### Step 3：开始开发
 
@@ -84,9 +85,16 @@ claude --dangerously-skip-permissions
 
 ## 👥 多人 Vibe Coding
 
-### 工作原理
+插件支持两种多人协作模式：
 
-当多个开发者同时用 Claude Code 开发同一个项目时，插件通过以下机制防止冲突：
+| 模式 | 适用场景 | 需要额外部署 |
+|------|---------|------------|
+| **本地模式**（默认） | 同一台机器多个终端 | 否 |
+| **远程模式** | 不同机器各自编码，推同一仓库 | 需部署协调服务 |
+
+### 本地模式
+
+当多个开发者在**同一台机器**上同时用 Claude Code 开发时，通过本地文件系统协调：
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -104,28 +112,82 @@ claude --dangerously-skip-permissions
 └─────────────────────────────────────────────────────────┘
 ```
 
+### 远程模式（跨机器协作）
+
+当开发者在**各自的机器**上编码并推送到同一 Git 仓库时，需要部署协调服务来实时同步状态：
+
+```
+Developer A (Machine A)              Developer B (Machine B)
+┌────────────────────┐               ┌────────────────────┐
+│ Claude Code        │               │ Claude Code        │
+│  ├─ SessionStart   │               │  ├─ SessionStart   │
+│  ├─ PreToolUse     │    REST API   │  ├─ PreToolUse     │
+│  └─ PostToolUse    │◄─────────────►│  └─ PostToolUse    │
+└────────┬───────────┘               └──────────┬─────────┘
+         │                                      │
+         └──────────────┬───────────────────────┘
+                        ▼
+              ┌──────────────────┐
+              │ openspec-autodev │
+              │     -server      │
+              │   (自托管 Docker) │
+              │   Node.js+SQLite │
+              └──────────────────┘
+```
+
+#### 部署协调服务
+
+```bash
+# Docker 一键部署
+docker run -d --name oadev-server -p 9527:9527 -v oadev-data:/data openspec-autodev-server
+
+# 或直接运行（Node.js 18+）
+cd server && npm install && npm start
+```
+
+访问 `http://localhost:9527` 创建项目并获取 API Key。
+
+#### 客户端连接
+
+每个开发者在 `/openspec-autodev:setup` 的 Step 7 中输入服务器地址和 API Key 即可。也可以手动创建 `.claude/coordination.json`：
+
+```json
+{
+  "enabled": true,
+  "server": "http://192.168.1.100:9527",
+  "projectId": "my-app",
+  "apiKey": "oadev_xxxxxxxxxxxxx",
+  "timeout": 3000
+}
+```
+
+#### 离线降级
+
+协调服务不可达时，所有 Hook 自动回退到本地模式，不会阻塞开发。
+
 ### 三层保护机制
 
 **1. Session 隔离**：每个 Claude Code 会话拥有独立的状态目录，工作流状态互不干扰。
 
-**2. 文件占用声明（File Claims）**：Phase 2 自动分析微任务涉及的文件，注册到 Session 中。编辑文件前自动检查是否被其他 Session 占用。
+**2. 文件占用声明（File Claims）**：Phase 2 自动分析微任务涉及的文件，注册到 Session 中。编辑文件前自动检查是否被其他 Session 占用。远程模式下 claim 实时同步到协调服务。
 
 **3. 冲突检测与协商**：
 - 启动新工作流时检查其他 Session 的文件占用
-- 编辑时 PreToolUse hook 实时拦截冲突写入
+- 编辑时 PreToolUse hook 实时拦截冲突写入（本地或远程）
 - 支持手动 claim/release/transfer 文件所有权
+- 远程模式额外支持：跨机器的 OpenSpec 规格同步，避免接口定义冲突
 
 ### 多人开发流程
 
 ```bash
-# === Alice 的终端 ===
+# === Alice 的终端（Machine A）===
 claude
 /openspec-autodev:auto-dev 用户搜索功能
 # Alice 自动获得 src/search/ 相关文件的占用
 
-# === Bob 的终端（同时） ===
+# === Bob 的终端（Machine B，同时）===
 claude
-/openspec-autodev:status              # 查看 Alice 在做什么
+/openspec-autodev:status              # 查看 Alice 在做什么（远程实时）
 /openspec-autodev:auto-dev 支付功能    # Bob 开发不冲突的功能
 # Bob 自动获得 src/payment/ 相关文件的占用
 
@@ -139,11 +201,11 @@ claude
 
 | 事件 | 行为 |
 |------|------|
-| 启动 Claude Code | 自动注册新 Session，显示其他活跃 Session |
-| 启动工作流 | 检查冲突、注册文件占用 |
-| 编辑文件 | 检查文件占用、更新心跳 |
+| 启动 Claude Code | 自动注册新 Session（本地 + 远程），显示其他活跃 Session |
+| 启动工作流 | 检查冲突、注册文件占用、同步 OpenSpec 规格 |
+| 编辑文件 | 检查文件占用（远程优先）、更新心跳 |
 | 完成工作流 | 释放文件占用、标记 Session 完成 |
-| Session 空闲 >30 分钟 | 标记为 stale，文件占用被自动释放 |
+| Session 空闲 >30 分钟 | 服务端标记为 stale，自动释放文件占用 |
 | 恢复中断的 Session | 支持从当前/指定/遗留 Session 恢复 |
 
 ## 🔄 迭代开发模式
@@ -247,7 +309,7 @@ bash parallel-dev.sh
 - **OpenSpec 保护**：阻止直接修改 `openspec/specs/`（必须通过 `/opsx:archive`）
 - **自动格式化**：编辑文件后自动运行 Prettier + ESLint
 - **文件冲突防止**：并行执行时自动检测文件冲突，必要时降级为串行
-- **跨 Session 保护**：文件占用声明机制防止多人同时修改相同文件
+- **跨 Session 保护**：文件占用声明机制防止多人同时修改相同文件（支持跨机器实时同步）
 
 ## 📊 断点恢复
 
@@ -275,6 +337,7 @@ bash parallel-dev.sh
 | Node.js ≥ 18 | 运行时 | [nodejs.org](https://nodejs.org) |
 | OpenSpec | 规格驱动 | `setup` 命令自动安装 |
 | Superpowers | TDD 技能包 | `setup` 命令自动安装 |
+| Docker（可选） | 协调服务部署 | [docker.com](https://docker.com)，仅跨机器协作需要 |
 
 ## 📝 License
 
