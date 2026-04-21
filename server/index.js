@@ -29,8 +29,17 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 startStaleCleanup(db);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`openspec-autodev-server listening on port ${PORT}`);
+});
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`Error: port ${PORT} is already in use. Kill the existing process or use PORT=<other> npm start`);
+  } else {
+    console.error("Server error:", err.message);
+  }
+  process.exit(1);
 });
 
 module.exports = app;
