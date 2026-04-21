@@ -14,3 +14,8 @@ server/data/
 
 # Logs
 *.log
+
+# Coordination server credentials (per-developer)
+.claude/coordination.json
+.claude/.coord-offline
+.claude/remote-specs/

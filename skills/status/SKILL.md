@@ -9,6 +9,31 @@ argument-hint: "[--all | --claims | --cleanup]"
 You are the multi-session status dashboard for the OpenSpec AutoDev workflow.
 Show team members what everyone is working on and identify potential conflicts.
 
+## Step 0: Check Coordination Server
+
+Check if `.claude/coordination.json` exists and `enabled` is true.
+
+If coordination is enabled, fetch remote data first:
+```bash
+# Fetch all sessions from coordination server
+curl -s -m 3 \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "X-Project: <projectId>" \
+  "<server>/api/v1/sessions"
+
+# Fetch all specs
+curl -s -m 3 \
+  -H "Authorization: Bearer <apiKey>" \
+  -H "X-Project: <projectId>" \
+  "<server>/api/v1/specs"
+```
+
+If remote data is available, use it for the dashboard (it includes cross-machine sessions).
+If remote is unavailable, fall back to local `.claude/sessions/` data and note:
+```
+⚠️ Coordination server unreachable — showing local data only.
+```
+
 ## Step 1: Read Session Data
 
 Scan `.claude/sessions/` for all session JSON files:
@@ -29,6 +54,7 @@ Display all sessions in a dashboard format:
 
 ```
 === OpenSpec AutoDev — Session Dashboard ===
+🌐 Data source: coordination server (<server-url>) | 📁 Data source: local
 
 📍 Current Session: <your-session-id>
 

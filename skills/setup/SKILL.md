@@ -195,7 +195,65 @@ Based on the detected project type (Step 5), **append** framework-specific allow
 
 Also ensure `.claude/settings.json` is **NOT** in `.gitignore` — this file should be shared with the team.
 
-## Step 7: Verification
+## Step 7: Configure Coordination Server (Optional)
+
+Ask the user:
+```
+👥 Multi-person collaboration: Do you want to connect to a coordination server
+   for cross-machine real-time collaboration?
+   (Required only if multiple developers work on separate machines)
+   
+   → y: Configure coordination server
+   → n: Skip (local-only collaboration, works for same-machine sessions)
+```
+
+If user chooses **n**, skip to Step 8.
+
+If user chooses **y**:
+
+### 7.1 Collect server information
+
+Ask for:
+1. **Server URL** (e.g., `http://192.168.1.100:9527`)
+2. **Project ID** (e.g., `my-app`)
+3. **API Key** (obtained from server admin page)
+
+### 7.2 Verify connection
+
+```bash
+curl -s -m 5 \
+  -H "Authorization: Bearer <api-key>" \
+  -H "X-Project: <project-id>" \
+  "<server-url>/api/v1/sessions"
+```
+
+If connection fails, show error and offer to retry or skip.
+
+### 7.3 Write configuration
+
+Write `.claude/coordination.json`:
+```json
+{
+  "enabled": true,
+  "server": "<server-url>",
+  "projectId": "<project-id>",
+  "apiKey": "<api-key>",
+  "timeout": 3000
+}
+```
+
+### 7.4 Update .gitignore
+
+Ensure `.claude/coordination.json` is in `.gitignore` (contains API key).
+
+Report:
+```
+✅ Coordination server: connected (<server-url>)
+   Project: <project-id>
+   Cross-machine collaboration: enabled
+```
+
+## Step 8: Verification
 
 Report setup results:
 
@@ -223,6 +281,7 @@ Report setup results:
    All automated phases will run without permission prompts.
 
 👥 Multi-person support:
+   Coordination server: {connected <url> / not configured}
    Each session gets isolated state under .claude/sessions/
    Use /openspec-autodev:status to see all active sessions.
    Use /openspec-autodev:claim to manage file ownership.

@@ -9,6 +9,27 @@ argument-hint: "<add|release|transfer> <file-pattern> [--to session-id]"
 You are the file ownership manager for multi-session collaboration.
 Manage which session owns which files to prevent edit conflicts.
 
+## Remote Sync Check
+
+Before any claim operation, check if coordination is enabled:
+```bash
+cat .claude/coordination.json 2>/dev/null
+```
+
+If enabled, **all claim operations must sync to the remote server** in addition to local files:
+
+- **add**: `POST <server>/api/v1/claims/<session-id>` with `{ "claims": ["<pattern>"] }`
+  - If server returns 409 (conflict), show the remote conflict info
+- **release**: `DELETE <server>/api/v1/claims/<session-id>`
+- **transfer**: `PUT <server>/api/v1/claims/transfer` with `{ "from": "<id>", "to": "<id>", "pattern": "<pattern>" }`
+- **list**: `GET <server>/api/v1/sessions` and display all sessions' claims
+
+If the server is unreachable, perform the operation locally and warn:
+```
+⚠️ Coordination server unreachable — change applied locally only.
+   Run /openspec-autodev:status when server is back to verify sync.
+```
+
 ## Parse Arguments
 
 Parse `$ARGUMENTS` to extract:
