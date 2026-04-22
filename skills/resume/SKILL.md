@@ -11,9 +11,18 @@ You are the workflow recovery assistant. Your job is to detect and resume an int
 ## Step 1: Locate Workflow State
 
 ### 1.1 Resolve Current Session
+
+若文件缺失或 `SESSION_ID` 为空，先生成并落盘，避免 `SESSION_DIR` 变成 `.claude/sessions/` 根目录导致 Priority 1 读错路径。
+
 ```bash
-SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null | tr -d '\r\n' || true)
+if [ -z "$SESSION_ID" ]; then
+  SESSION_ID="$(whoami 2>/dev/null || echo unknown)-$(date +%s)"
+  mkdir -p ".claude/sessions/${SESSION_ID}"
+  printf '%s\n' "$SESSION_ID" > .claude/current-session-id
+fi
 SESSION_DIR=".claude/sessions/${SESSION_ID}"
+mkdir -p "${SESSION_DIR}"
 ```
 
 ### 1.2 Search for Workflow State (priority order)

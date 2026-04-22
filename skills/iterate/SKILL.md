@@ -46,17 +46,18 @@ git branch -a | grep -oE 'iter/<feature-name>-v([0-9]+)' | grep -oE 'v[0-9]+' | 
 If no prior iteration branch exists, default to `v2` (since `v1` is the original `auto-dev` run).
 
 ### Resolve Session Directory
+
+与 `auto-dev` 相同：优先读 hook 写入的 `.claude/current-session-id`；若缺失或为空则生成，并去掉 `\r`，避免 `SESSION_DIR` 指向错误路径。
+
 ```bash
-SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null | tr -d '\r\n' || true)
+if [ -z "$SESSION_ID" ]; then
+  SESSION_ID="$(whoami 2>/dev/null || echo unknown)-$(date +%s)"
+  mkdir -p ".claude/sessions/${SESSION_ID}"
+  printf '%s\n' "$SESSION_ID" > .claude/current-session-id
+fi
 SESSION_DIR=".claude/sessions/${SESSION_ID}"
 mkdir -p "${SESSION_DIR}"
-```
-
-If `.claude/current-session-id` does not exist, generate a new session:
-```bash
-SESSION_ID="$(whoami)-$(date +%s)"
-mkdir -p ".claude/sessions/${SESSION_ID}"
-echo "$SESSION_ID" > .claude/current-session-id
 ```
 
 **All workflow state files go under `${SESSION_DIR}/` — NOT `.claude/` directly.**

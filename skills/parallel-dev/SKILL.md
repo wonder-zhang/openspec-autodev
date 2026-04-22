@@ -18,10 +18,17 @@ Use this instead of the built-in parallel batch mode (auto-dev Step 4) when:
 
 ## Step 1: Read Current Plan
 
-Resolve the session directory:
+Resolve the session directory（缺失或空则生成，与 auto-dev 一致）：
+
 ```bash
-SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null | tr -d '\r\n' || true)
+if [ -z "$SESSION_ID" ]; then
+  SESSION_ID="$(whoami 2>/dev/null || echo unknown)-$(date +%s)"
+  mkdir -p ".claude/sessions/${SESSION_ID}"
+  printf '%s\n' "$SESSION_ID" > .claude/current-session-id
+fi
 SESSION_DIR=".claude/sessions/${SESSION_ID}"
+mkdir -p "${SESSION_DIR}"
 ```
 
 Read `${SESSION_DIR}/current-plan.md` to get:
@@ -49,7 +56,12 @@ set -euo pipefail
 FEATURE="<feature-slug>"
 SPECS="openspec/changes/$FEATURE/specs.md"
 DESIGN="openspec/changes/$FEATURE/design.md"
-SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null | tr -d '\r\n' || true)
+if [ -z "$SESSION_ID" ]; then
+  SESSION_ID="$(whoami 2>/dev/null || echo unknown)-$(date +%s)"
+  mkdir -p ".claude/sessions/${SESSION_ID}"
+  printf '%s\n' "$SESSION_ID" > .claude/current-session-id
+fi
 RESULTS_DIR=".claude/sessions/${SESSION_ID}/results"
 
 mkdir -p "$RESULTS_DIR"

@@ -37,18 +37,20 @@ All phases after Phase 0 run **fully automatically**. Any interactive prompt wil
 ## Step 0: Init workflow state & session
 
 ### 0.1 Resolve Session Directory
-Read the current session ID and derive the session directory:
+
+`SessionStart` hook 通常已把当前会话 ID 写入 `.claude/current-session-id`；若文件缺失（未跑过 hook、新 clone、hooks 被禁用）或内容为空，**必须**在本步生成 ID，否则 `SESSION_DIR` 会变成 `.claude/sessions/` 根目录，状态会写乱。
+
+在**同一段** shell 中解析（去掉 Windows 下可能出现的 `\r`）：
+
 ```bash
-SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null | tr -d '\r\n' || true)
+if [ -z "$SESSION_ID" ]; then
+  SESSION_ID="$(whoami 2>/dev/null || echo unknown)-$(date +%s)"
+  mkdir -p ".claude/sessions/${SESSION_ID}"
+  printf '%s\n' "$SESSION_ID" > .claude/current-session-id
+fi
 SESSION_DIR=".claude/sessions/${SESSION_ID}"
 mkdir -p "${SESSION_DIR}"
-```
-
-If `.claude/current-session-id` does not exist, generate a new session:
-```bash
-SESSION_ID="$(whoami)-$(date +%s)"
-mkdir -p ".claude/sessions/${SESSION_ID}"
-echo "$SESSION_ID" > .claude/current-session-id
 ```
 
 **All workflow state files go under `${SESSION_DIR}/` — NOT `.claude/` directly.**

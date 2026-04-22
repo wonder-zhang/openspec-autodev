@@ -37,17 +37,18 @@ git checkout -b fix/<bug-slug>
 ```
 
 ### 0.3 Resolve Session Directory
+
+优先读 `.claude/current-session-id`（`SessionStart` hook 写入）；缺失或为空则生成；`tr -d '\r\n'` 避免 Windows CRLF 导致路径异常。
+
 ```bash
-SESSION_ID=$(cat .claude/current-session-id 2>/dev/null)
+SESSION_ID=$(cat .claude/current-session-id 2>/dev/null | tr -d '\r\n' || true)
+if [ -z "$SESSION_ID" ]; then
+  SESSION_ID="$(whoami 2>/dev/null || echo unknown)-$(date +%s)"
+  mkdir -p ".claude/sessions/${SESSION_ID}"
+  printf '%s\n' "$SESSION_ID" > .claude/current-session-id
+fi
 SESSION_DIR=".claude/sessions/${SESSION_ID}"
 mkdir -p "${SESSION_DIR}"
-```
-
-If `.claude/current-session-id` does not exist, generate a new session:
-```bash
-SESSION_ID="$(whoami)-$(date +%s)"
-mkdir -p ".claude/sessions/${SESSION_ID}"
-echo "$SESSION_ID" > .claude/current-session-id
 ```
 
 **All workflow state files go under `${SESSION_DIR}/` — NOT `.claude/` directly.**
