@@ -107,13 +107,28 @@ Analyze the project structure to detect:
 Update the `CLAUDE.md` Technical Constraints section with detected values:
 - Replace `[Auto-detected or user-specified]` with actual values
 
-## Step 6: Configure Permissions for Non-Interactive Automation
+## Step 6: Configure `.claude/settings.json` (permissions + hooks)
 
-If `.claude/settings.json` does NOT exist, create it with the following permissions template.
-If it already exists, **merge** the `permissions` block without overwriting existing rules.
+项目里的 `.claude/settings.json` 必须包含两部分，插件才能正常工作：
+
+1. **`permissions`**：非交互自动化所需的 Bash / 工具白名单（与 Step 5 检测到的栈合并）。
+2. **`hooks`**：由插件在 `SessionStart` / `PreToolUse` / `PostToolUse` / `SubagentStop` 调用 `hooks/*.sh`（Session 注册、文件 claim、心跳、子代理结束等）。**若缺少 `hooks`，多 Session、协调服务、PreToolUse 拦截都不会生效。**
+
+**推荐做法**：先读插件自带完整配置，再合并进项目（避免与下文模板长期漂移）：
+
+```bash
+cat "${CLAUDE_PLUGIN_ROOT}/settings.json"
+```
+
+将其中 **`defaultMode`**、**`hooks`** 以及需要的 **`permissions.allow` / `permissions.deny`** 合并到项目 `.claude/settings.json`。插件根目录的 `settings.json` 与下文模板在语义上应一致。
+
+### 6.1 新建项目：完整模板
+
+若 `.claude/settings.json` **不存在**，可直接写入下面整块（已含 `defaultMode`、`permissions`、`hooks`，与仓库根目录 `settings.json` 对齐；`hooks` 中的路径使用 `${CLAUDE_PLUGIN_ROOT}`，由 Claude Code 在加载插件时解析）。
 
 ```json
 {
+  "defaultMode": "auto",
   "permissions": {
     "allow": [
       "Read",
@@ -127,8 +142,11 @@ If it already exists, **merge** the `permissions` block without overwriting exis
       "Bash(npm install *)",
       "Bash(npm list *)",
       "Bash(npm init -y *)",
+      "Bash(npm exec *)",
       "Bash(npx -y *)",
       "Bash(npx --yes *)",
+      "Bash(yarn *)",
+      "Bash(pnpm *)",
       "Bash(node *)",
       "Bash(git status *)",
       "Bash(git diff *)",
@@ -143,55 +161,162 @@ If it already exists, **merge** the `permissions` block without overwriting exis
       "Bash(git pull *)",
       "Bash(git merge *)",
       "Bash(git stash *)",
+      "Bash(git remote *)",
+      "Bash(git tag *)",
+      "Bash(git rev-parse *)",
+      "Bash(git show *)",
       "Bash(openspec *)",
       "Bash(ls *)",
       "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(grep *)",
       "Bash(mkdir *)",
       "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(touch *)",
       "Bash(echo *)",
+      "Bash(printf *)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(test *)",
       "Bash(cd * && *)",
-      "Bash(CI=true *)"
+      "Bash(CI=true *)",
+      "Bash(tsc *)",
+      "Bash(eslint *)",
+      "Bash(prettier *)",
+      "Bash(jest *)",
+      "Bash(vitest *)",
+      "Bash(pytest *)",
+      "Bash(python *)",
+      "Bash(pip install *)",
+      "Bash(cargo *)",
+      "Bash(go *)",
+      "Bash(gradlew *)",
+      "Bash(pod install *)"
     ],
     "deny": [
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
       "Bash(rm -rf ~/*)",
+      "Bash(rm -rf $HOME)",
+      "Bash(rm -rf $HOME/*)",
       "Bash(sudo *)",
+      "Bash(su *)",
       "Bash(chmod 777 *)",
+      "Bash(chmod -R 777 *)",
       "Bash(curl * | bash*)",
       "Bash(curl * | sh*)",
       "Bash(wget * | bash*)",
+      "Bash(wget * | sh*)",
       "Bash(eval *)",
+      "Bash(:(){ :|:& };:*)",
       "Bash(mkfs *)",
       "Bash(dd if=*)",
+      "Bash(format *)",
+      "Bash(diskpart *)",
       "Bash(shutdown *)",
       "Bash(reboot *)",
+      "Bash(reg delete *)",
+      "Bash(reg add *)",
+      "Bash(net user *)",
+      "Bash(net localgroup *)",
       "Read(.env)",
       "Read(.env.*)",
+      "Read(**/credentials*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
+      "Read(**/*.crt)",
+      "Read(**/*secret*)",
+      "Read(**/*token*)",
       "Edit(.env)",
       "Edit(.env.*)",
+      "Edit(**/credentials*)",
       "Edit(**/*.pem)",
       "Edit(**/*.key)",
+      "Edit(**/*.crt)",
+      "Edit(**/*secret*)",
+      "Edit(**/*token*)",
       "Edit(.claude/settings.json)",
       "Write(.env)",
       "Write(.env.*)",
+      "Write(**/credentials*)",
+      "Write(**/*.pem)",
+      "Write(**/*.key)",
+      "Write(**/*.crt)",
       "Write(.claude/settings.json)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use.sh\" \"$TOOL_INPUT_FILE_PATH\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use.sh\" \"$TOOL_INPUT_FILE_PATH\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Subagent completed\" >> .claude/workflow-metrics.log && bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use.sh\" \"\""
+          }
+        ]
+      }
     ]
   }
 }
 ```
 
-Based on the detected project type (Step 5), **append** framework-specific allow rules:
+### 6.2 已有 `.claude/settings.json`：合并规则
 
-- **Node.js/TypeScript**: `Bash(tsc *)`, `Bash(eslint *)`, `Bash(prettier *)`, `Bash(jest *)`, `Bash(vitest *)`
-- **Python**: `Bash(pytest *)`, `Bash(python *)`, `Bash(pip install *)`
-- **Go**: `Bash(go *)`
-- **Rust**: `Bash(cargo *)`
-- **Java/Kotlin**: `Bash(gradlew *)`, `Bash(mvn *)`
-- **React Native**: `Bash(pod install *)`, `Bash(react-native *)`
+- **`permissions`**：与现有规则 **合并**（去重后追加 `allow`，`deny` 取并集或保留更严的一方），不要整文件覆盖以免丢掉团队已有配置。
+- **`defaultMode`**：若缺失，设为 `"auto"`（与插件一致）。
+- **`hooks`**：
+  - 若 **没有 `hooks` 键**：整段写入 6.1 模板中的 `hooks` 对象。
+  - 若 **已有 `hooks`**：在 **不删除** 用户自定义 hook 的前提下，为 `SessionStart`、`PostToolUse`、`PreToolUse`、`SubagentStop` 各追加一条指向 `"${CLAUDE_PLUGIN_ROOT}/hooks/..."` 的 `command`（若已存在相同命令则跳过）。若用户 hook 与插件 hook 冲突，向用户说明并保留用户选择。
+
+### 6.3 Step 5 补充的 allow 规则
+
+在 6.1 的 `permissions.allow` 基础上，按检测结果追加（若尚未存在）：
+
+- **Node.js/TypeScript**：`Bash(tsc *)`, `Bash(eslint *)`, `Bash(prettier *)`, `Bash(jest *)`, `Bash(vitest *)`
+- **Python**：`Bash(pytest *)`, `Bash(python *)`, `Bash(pip install *)`
+- **Go**：`Bash(go *)`
+- **Rust**：`Bash(cargo *)`
+- **Java/Kotlin**：`Bash(gradlew *)`, `Bash(mvn *)`
+- **React Native**：`Bash(pod install *)`, `Bash(react-native *)`
+
+（6.1 模板已含部分通用项；仅追加检测到的、且列表中尚未出现的项。）
 
 Also ensure `.claude/settings.json` is **NOT** in `.gitignore` — this file should be shared with the team.
 
@@ -241,6 +366,8 @@ Write `.claude/coordination.json`:
   "timeout": 3000
 }
 ```
+
+若 `permissions.allow` 中尚无 `Bash(curl *)`，请追加该项；`session-utils.sh` 等脚本会用 `curl` 访问协调服务，缺少白名单时容易在非交互场景下反复触发权限确认。
 
 ### 7.4 Update .gitignore
 
