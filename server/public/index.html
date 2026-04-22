@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>openspec-autodev 协调服务</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>openspec-autodev 协调服务</h1>
+      <p>创建项目、管理凭据、查看 Session 与 OpenSpec 同步摘要（仅供团队内网使用）</p>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2>新建项目</h2>
+        <form id="formCreate">
+          <div class="row">
+            <div class="field">
+              <label for="newProjectId">Project ID（英文 slug，如 my-app）</label>
+              <input type="text" id="newProjectId" name="id" required autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="newProjectName">显示名称</label>
+              <input type="text" id="newProjectName" name="name" required autocomplete="off" />
+            </div>
+            <button type="submit">创建</button>
+          </div>
+        </form>
+        <div id="createMsg" class="alert" hidden></div>
+        <div id="keyDisplay" class="key-box" hidden>
+          <strong>API Key</strong>（请复制保存；不会再次显示完整密钥）
+          <div style="margin-top: 0.5rem"><code></code></div>
+          <div class="inline-actions">
+            <button type="button" id="btnCopyKey" class="secondary">复制 Key</button>
+            <span id="copyHint" style="color: var(--success); font-size: 0.8rem"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>连接并查看看板</h2>
+        <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.875rem">
+          凭据保存在本机浏览器 localStorage。请勿在公网未防护环境使用。
+        </p>
+        <form id="formConnect">
+          <div class="row">
+            <div class="field">
+              <label for="connectProject">Project ID</label>
+              <input type="text" id="connectProject" autocomplete="off" />
+            </div>
+            <div class="field" style="flex: 2">
+              <label for="connectKey">API Key</label>
+              <input type="password" id="connectKey" autocomplete="off" />
+            </div>
+            <button type="submit">加载看板</button>
+            <button type="button" id="btnRefresh" class="secondary">刷新</button>
+          </div>
+        </form>
+        <div id="connectMsg" class="alert" hidden></div>
+      </div>
+
+      <div id="dashboard" class="card" hidden>
+        <h2>看板</h2>
+        <p id="dashMeta" style="margin: 0; color: var(--muted); font-size: 0.875rem"></p>
+
+        <h3 style="margin: 1.25rem 0 0.5rem; font-size: 0.9rem">Sessions</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Feature</th>
+              <th>Status</th>
+              <th>Phase</th>
+              <th>file_claims</th>
+            </tr>
+          </thead>
+          <tbody id="sessionsBody"></tbody>
+        </table>
+
+        <h3 style="margin: 1.25rem 0 0.5rem; font-size: 0.9rem">Specs</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Slug</th>
+              <th>Type</th>
+              <th>Version</th>
+              <th>Updated by</th>
+              <th>Updated at</th>
+            </tr>
+          </thead>
+          <tbody id="specsBody"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <footer>
+      REST API 前缀 <code>/api/v1</code> ·
+      <a href="/health" style="color: var(--accent)">/health</a>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

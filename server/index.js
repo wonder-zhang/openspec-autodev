@@ -17,7 +17,12 @@ app.use(express.json({ limit: "5mb" }));
 const morganFormat = process.env.MORGAN_FORMAT || "tiny";
 app.use(
   morgan(morganFormat, {
-    skip: (req) => req.path === "/health",
+    skip: (req) =>
+      req.path === "/health" ||
+      req.path === "/" ||
+      req.path === "/index.html" ||
+      req.path === "/styles.css" ||
+      req.path === "/app.js",
     stream: { write: (line) => process.stdout.write(line) },
   })
 );
@@ -37,10 +42,17 @@ app.use("/api/v1/specs", require("./routes/specs"));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+app.use(express.static(path.join(__dirname, "public")));
+
 startStaleCleanup(db);
 
 const server = app.listen(PORT, () => {
-  logger.info(`openspec-autodev-server listening`, { port: PORT, dataDir: DATA_DIR, logLevel: process.env.LOG_LEVEL || "info" });
+  logger.info(`openspec-autodev-server listening`, {
+    port: PORT,
+    dataDir: DATA_DIR,
+    logLevel: process.env.LOG_LEVEL || "info",
+    adminUi: `http://127.0.0.1:${PORT}/`,
+  });
 });
 
 server.on("error", (err) => {

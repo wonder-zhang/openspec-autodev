@@ -145,7 +145,7 @@ docker run -d --name oadev-server -p 9527:9527 -v oadev-data:/data openspec-auto
 cd server && npm install && npm start
 ```
 
-协调服务为纯 API，无 Web 管理页。创建项目示例：
+启动后在浏览器打开 **`http://<host>:<port>/`** 可使用内置管理页：新建项目、复制 API Key、查看看板（Sessions / Specs）。也可纯用 API，例如：
 
 ```bash
 curl -X POST http://localhost:9527/api/v1/projects \
