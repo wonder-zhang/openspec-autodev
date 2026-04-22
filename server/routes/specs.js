@@ -1,4 +1,5 @@
 const { Router } = require("express");
+const logger = require("../lib/logger");
 const router = Router();
 
 function featureToSlug(feature) {
@@ -10,6 +11,7 @@ router.post("/sync", (req, res) => {
   const { feature, session_id, files } = req.body;
 
   if (!feature || !files || !Array.isArray(files)) {
+    logger.warn("specs sync rejected: invalid body", { projectId: req.projectId });
     return res.status(400).json({ error: "feature and files array are required" });
   }
 
@@ -41,6 +43,7 @@ router.post("/sync", (req, res) => {
   });
 
   syncAll();
+  logger.info("specs synced", { projectId: req.projectId, feature, slug, fileCount: files.length, session_id: validSessionId });
   res.json({ synced: files.length, slug });
 });
 
@@ -49,6 +52,7 @@ router.get("/changes", (req, res) => {
   const { since } = req.query;
 
   if (!since) {
+    logger.warn("specs/changes rejected: missing since", { projectId: req.projectId });
     return res.status(400).json({ error: "since query parameter is required" });
   }
 
@@ -61,6 +65,7 @@ router.get("/changes", (req, res) => {
       ORDER BY updated_at DESC
     `)
     .all(req.projectId, normalizedSince);
+  logger.debug("specs changes listed", { projectId: req.projectId, count: specs.length });
   res.json(specs);
 });
 
@@ -73,6 +78,7 @@ router.get("/", (req, res) => {
       ORDER BY feature, file_type
     `)
     .all(req.projectId);
+  logger.debug("specs listed", { projectId: req.projectId, count: specs.length });
   res.json(specs);
 });
 
@@ -82,7 +88,11 @@ router.get("/:slug/:fileType", (req, res) => {
     .prepare("SELECT * FROM specs WHERE project_id = ? AND slug = ? AND file_type = ?")
     .get(req.projectId, req.params.slug, req.params.fileType);
 
-  if (!spec) return res.status(404).json({ error: "Spec not found" });
+  if (!spec) {
+    logger.debug("spec not found", { projectId: req.projectId, slug: req.params.slug, fileType: req.params.fileType });
+    return res.status(404).json({ error: "Spec not found" });
+  }
+  logger.debug("spec fetched", { projectId: req.projectId, slug: req.params.slug, fileType: req.params.fileType, version: spec.version });
   res.json(spec);
 });
 

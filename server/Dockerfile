@@ -14,6 +14,7 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 COPY index.js db.js ./
+COPY lib/ ./lib/
 COPY middleware/ ./middleware/
 COPY routes/ ./routes/
 COPY jobs/ ./jobs/

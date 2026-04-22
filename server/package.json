@@ -12,10 +12,15 @@
     "better-sqlite3": "^11.0.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
+    "morgan": "^1.10.1",
     "uuid": "^10.0.0"
   },
   "jest": {
-    "testPathIgnorePatterns": ["/node_modules/", "__tests__/helpers\\.js$"]
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "__tests__/helpers\\.js$"
+    ],
+    "setupFilesAfterEnv": ["<rootDir>/jest.setup.js"]
   },
   "devDependencies": {
     "jest": "^29.7.0",

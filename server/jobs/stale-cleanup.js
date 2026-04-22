@@ -1,3 +1,5 @@
+const logger = require("../lib/logger");
+
 const STALE_THRESHOLD_MINUTES = 30;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 
@@ -10,13 +12,14 @@ function cleanupStaleSessions(db) {
   `).run();
 
   if (result.changes > 0) {
-    console.log(`[stale-cleanup] Marked ${result.changes} session(s) as stale`);
+    logger.info("stale sessions cleaned", { count: result.changes });
   }
 
   return result.changes;
 }
 
 function startStaleCleanup(db) {
+  logger.info("stale cleanup scheduler started", { intervalMs: CLEANUP_INTERVAL_MS, thresholdMinutes: STALE_THRESHOLD_MINUTES });
   setInterval(() => cleanupStaleSessions(db), CLEANUP_INTERVAL_MS);
 }
 

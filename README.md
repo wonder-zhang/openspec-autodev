@@ -145,7 +145,21 @@ docker run -d --name oadev-server -p 9527:9527 -v oadev-data:/data openspec-auto
 cd server && npm install && npm start
 ```
 
-访问 `http://localhost:9527` 创建项目并获取 API Key。
+协调服务为纯 API，无 Web 管理页。创建项目示例：
+
+```bash
+curl -X POST http://localhost:9527/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -d "{\"id\":\"my-app\",\"name\":\"My App\"}"
+```
+
+**日志**：默认每条 HTTP 请求由 `morgan` 输出一行（`/health` 除外）；业务事件为 `[coord]` 前缀的结构化日志。环境变量：
+
+| 变量 | 说明 | 默认 |
+|------|------|------|
+| `LOG_LEVEL` | `error` / `warn` / `info` / `debug`（心跳、`claims/check` 等为 debug） | `info` |
+| `MORGAN_FORMAT` | morgan 日志格式，如 `combined`、`tiny` | `tiny` |
+| `PORT` / `DATA_DIR` | 监听端口与 SQLite 数据目录 | `9527` / `./data` |
 
 #### 客户端连接
 

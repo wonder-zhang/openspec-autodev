@@ -1,4 +1,5 @@
 const { Router } = require("express");
+const logger = require("../lib/logger");
 const router = Router();
 
 router.post("/", (req, res) => {
@@ -6,6 +7,7 @@ router.post("/", (req, res) => {
   const { id, user } = req.body;
 
   if (!id || !user) {
+    logger.warn("session register rejected: missing id or user", { projectId: req.projectId });
     return res.status(400).json({ error: "id and user are required" });
   }
 
@@ -15,6 +17,7 @@ router.post("/", (req, res) => {
   `).run(id, req.projectId, user);
 
   const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(id);
+  logger.info("session registered", { projectId: req.projectId, sessionId: id, user });
   res.status(201).json(session);
 });
 
@@ -28,6 +31,7 @@ router.get("/", (req, res) => {
     ...s,
     file_claims: JSON.parse(s.file_claims || "[]"),
   }));
+  logger.debug("sessions listed", { projectId: req.projectId, count: parsed.length });
   res.json(parsed);
 });
 
@@ -45,6 +49,7 @@ router.put("/:id", (req, res) => {
   }
 
   if (updates.length === 0) {
+    logger.warn("session update rejected: no valid fields", { sessionId: req.params.id, projectId: req.projectId });
     return res.status(400).json({ error: "No valid fields to update" });
   }
 
@@ -57,7 +62,11 @@ router.put("/:id", (req, res) => {
   `).run(...values);
 
   const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(req.params.id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+  if (!session) {
+    logger.warn("session update: not found", { sessionId: req.params.id, projectId: req.projectId });
+    return res.status(404).json({ error: "Session not found" });
+  }
+  logger.info("session updated", { projectId: req.projectId, sessionId: req.params.id, fields: Object.keys(req.body) });
   res.json(session);
 });
 
@@ -69,10 +78,12 @@ router.put("/:id/heartbeat", (req, res) => {
   `).run(req.params.id, req.projectId);
 
   if (result.changes === 0) {
+    logger.warn("heartbeat: session not found", { sessionId: req.params.id, projectId: req.projectId });
     return res.status(404).json({ error: "Session not found" });
   }
 
   const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(req.params.id);
+  logger.debug("heartbeat", { projectId: req.projectId, sessionId: req.params.id });
   res.json(session);
 });
 
@@ -81,6 +92,7 @@ router.delete("/:id", (req, res) => {
   db.prepare("DELETE FROM sessions WHERE id = ? AND project_id = ?").run(
     req.params.id, req.projectId
   );
+  logger.info("session deleted", { projectId: req.projectId, sessionId: req.params.id });
   res.json({ deleted: req.params.id });
 });
 
