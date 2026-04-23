@@ -154,6 +154,8 @@ Extract all target file paths from `${SESSION_DIR}/current-plan.md` and register
 }
 ```
 
+**Remote coordination (multi-machine):** When `.claude/coordination.json` has `enabled: true`, saving this JSON triggers the `PostToolUse` hook, which pushes `fileClaims` to the coordination server (`POST /api/v1/claims/<session-id>` with `replace: true`). You do **not** need a separate curl step after editing the session file.
+
 Before registering, check for conflicts with other active sessions. If any file is already claimed:
 ```
 ⚠️ File claim conflict:

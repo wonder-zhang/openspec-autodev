@@ -58,11 +58,39 @@ router.get("/check", (req, res) => {
 router.post("/:sessionId", (req, res) => {
   const db = req.app.locals.db;
   const { sessionId } = req.params;
-  const { claims, force } = req.body;
+  const { claims, force, replace } = req.body;
 
   if (!claims || !Array.isArray(claims)) {
     logger.warn("claims register rejected: invalid body", { projectId: req.projectId, sessionId });
     return res.status(400).json({ error: "claims array is required" });
+  }
+
+  const session = db.prepare("SELECT file_claims FROM sessions WHERE id = ? AND project_id = ?")
+    .get(sessionId, req.projectId);
+  if (!session) {
+    logger.warn("claims register: session not found", { projectId: req.projectId, sessionId });
+    return res.status(404).json({ error: "Session not found" });
+  }
+
+  if (replace === true) {
+    if (!force) {
+      const conflicts = [];
+      for (const claim of claims) {
+        const conflict = findConflict(db, req.projectId, claim, sessionId);
+        if (conflict) {
+          conflicts.push({ pattern: claim, ...conflict });
+        }
+      }
+      if (conflicts.length > 0) {
+        logger.warn("claims replace rejected: conflicts", { projectId: req.projectId, sessionId, conflictCount: conflicts.length });
+        return res.status(409).json({ error: "File claim conflicts detected", conflicts });
+      }
+    }
+    const normalized = [...new Set(claims)];
+    db.prepare("UPDATE sessions SET file_claims = ?, last_heartbeat = datetime('now') WHERE id = ?")
+      .run(JSON.stringify(normalized), sessionId);
+    logger.info("claims replaced", { projectId: req.projectId, sessionId, count: normalized.length, force: Boolean(force) });
+    return res.json({ session_id: sessionId, file_claims: normalized });
   }
 
   if (!force) {
@@ -77,13 +105,6 @@ router.post("/:sessionId", (req, res) => {
       logger.warn("claims register rejected: conflicts", { projectId: req.projectId, sessionId, conflictCount: conflicts.length });
       return res.status(409).json({ error: "File claim conflicts detected", conflicts });
     }
-  }
-
-  const session = db.prepare("SELECT file_claims FROM sessions WHERE id = ? AND project_id = ?")
-    .get(sessionId, req.projectId);
-  if (!session) {
-    logger.warn("claims register: session not found", { projectId: req.projectId, sessionId });
-    return res.status(404).json({ error: "Session not found" });
   }
 
   const existing = JSON.parse(session.file_claims || "[]");

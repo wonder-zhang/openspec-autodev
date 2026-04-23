@@ -51,6 +51,13 @@ if [ "$COORD_ENABLED" = "true" ]; then
       echo "Use /openspec-autodev:claim to negotiate file ownership, or /openspec-autodev:status to see all sessions."
       exit 2
     fi
+    # Same-machine sessions that have not synced to the server yet
+    CONFLICT_MSG=$(check_file_claim "$FILE")
+    if [ $? -ne 0 ]; then
+      echo "⚠️ ${CONFLICT_MSG}"
+      echo "Use /openspec-autodev:claim to negotiate file ownership, or /openspec-autodev:status to see all sessions."
+      exit 2
+    fi
     exit 0
   else
     coord_offline_warning

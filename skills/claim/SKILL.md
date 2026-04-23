@@ -16,6 +16,8 @@ Before any claim operation, check if coordination is enabled:
 cat .claude/coordination.json 2>/dev/null
 ```
 
+When coordination is enabled, saving `.claude/sessions/<session-id>.json` updates the server copy of `fileClaims` automatically (`PostToolUse` hook, full replace). If you change claims **without** writing that JSON file, use the REST calls below.
+
 If enabled, **all claim operations must sync to the remote server** in addition to local files:
 
 - **add**: `POST <server>/api/v1/claims/<session-id>` with `{ "claims": ["<pattern>"] }`

@@ -211,6 +211,8 @@ Generate batch plan and append to `${SESSION_DIR}/current-plan.md`.
 ### 4.4 Register File Claims
 Extract all target file paths from `${SESSION_DIR}/current-plan.md` and register as file claims in `.claude/sessions/${SESSION_ID}.json`. Check for conflicts with other active sessions before registering. If conflicts exist, warn the user and offer options (skip/force/abort).
 
+**Remote coordination:** If `coordination.json` is enabled, updating `.claude/sessions/${SESSION_ID}.json` automatically syncs `fileClaims` to the server on the next tool completion (`PostToolUse` hook); no manual API call is required after saving that file.
+
 ### 4.5 Update workflow state
 Update `${SESSION_DIR}/workflow-state.json` with `parallelBatches` array:
 ```json

@@ -13,14 +13,21 @@ update_heartbeat
 
 # Remote heartbeat (if coordination enabled)
 load_coordination_config
-if [ "$COORD_ENABLED" = "true" ]; then
-  MY_SID=$(get_session_id)
-  if [ -n "$MY_SID" ]; then
-    RESULT=$(coord_api PUT "/api/v1/sessions/${MY_SID}/heartbeat")
-    if [ -n "$RESULT" ]; then
-      coord_online_clear
-    fi
+MY_SID=$(get_session_id)
+if [ "$COORD_ENABLED" = "true" ] && [ -n "$MY_SID" ]; then
+  RESULT=$(coord_api PUT "/api/v1/sessions/${MY_SID}/heartbeat")
+  if [ -n "$RESULT" ]; then
+    coord_online_clear
   fi
+fi
+
+# Mirror local fileClaims to coordination server when session registration JSON was saved
+if [ "$COORD_ENABLED" = "true" ] && [ -n "$MY_SID" ] && [ -n "$FILE" ]; then
+  _CLAIM_SYNC_FILE="${FILE//\\//}"
+  if [[ "$_CLAIM_SYNC_FILE" == *"/.claude/sessions/${MY_SID}.json" ]] || [[ "$_CLAIM_SYNC_FILE" == ".claude/sessions/${MY_SID}.json" ]]; then
+    sync_remote_file_claims_from_local
+  fi
+  unset _CLAIM_SYNC_FILE
 fi
 
 if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then

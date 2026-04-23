@@ -103,6 +103,36 @@ describe("Claims API", () => {
         .send({ claims: ["src/search/index.ts"], force: true });
       expect(res.status).toBe(200);
     });
+
+    test("replace mode sets file_claims exactly (no merge with prior)", async () => {
+      seedSession(db, { id: "bob-1", user: "bob", file_claims: '["src/old/*"]' });
+      const res = await request(app)
+        .post("/api/v1/claims/bob-1")
+        .set(auth())
+        .send({ claims: ["src/new/a.ts"], replace: true });
+      expect(res.status).toBe(200);
+      expect(res.body.file_claims).toEqual(["src/new/a.ts"]);
+    });
+
+    test("replace mode with empty array clears claims", async () => {
+      seedSession(db, { id: "bob-1", user: "bob", file_claims: '["src/payment/*"]' });
+      const res = await request(app)
+        .post("/api/v1/claims/bob-1")
+        .set(auth())
+        .send({ claims: [], replace: true });
+      expect(res.status).toBe(200);
+      expect(res.body.file_claims).toEqual([]);
+    });
+
+    test("replace mode rejects conflicts with another session", async () => {
+      seedSession(db, { id: "alice-1", file_claims: '["src/search/*"]' });
+      seedSession(db, { id: "bob-1", user: "bob", file_claims: '["src/payment/*"]' });
+      const res = await request(app)
+        .post("/api/v1/claims/bob-1")
+        .set(auth())
+        .send({ claims: ["src/search/foo.ts"], replace: true });
+      expect(res.status).toBe(409);
+    });
   });
 
   describe("DELETE /claims/:sessionId", () => {

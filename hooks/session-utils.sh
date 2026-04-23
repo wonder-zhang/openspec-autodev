@@ -390,3 +390,52 @@ coord_offline_warning() {
 coord_online_clear() {
   rm -f ".claude/.coord-offline" 2>/dev/null
 }
+
+# Push current session's local fileClaims to the coordination server (full replace).
+# Called after edits to .claude/sessions/<session-id>.json when coordination is enabled.
+sync_remote_file_claims_from_local() {
+  load_coordination_config
+  if [ "$COORD_ENABLED" != "true" ]; then
+    return 0
+  fi
+
+  local sid
+  sid=$(get_session_id)
+  if [ -z "$sid" ]; then
+    return 0
+  fi
+
+  local session_file="${SESSIONS_DIR}/${sid}.json"
+  if [ ! -f "$session_file" ]; then
+    return 0
+  fi
+
+  local body=""
+  if command -v python3 &>/dev/null; then
+    body=$(python3 -c "
+import json, sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    d = json.load(f)
+claims = d.get('fileClaims') or []
+print(json.dumps({'claims': claims, 'replace': True}))
+" "$session_file" 2>/dev/null)
+  elif command -v node &>/dev/null; then
+    body=$(node -e "
+const fs = require('fs');
+const d = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+const claims = Array.isArray(d.fileClaims) ? d.fileClaims : [];
+console.log(JSON.stringify({ claims, replace: true }));
+" "$session_file" 2>/dev/null)
+  fi
+
+  if [ -z "$body" ]; then
+    return 0
+  fi
+
+  local resp
+  resp=$(coord_api POST "/api/v1/claims/${sid}" "$body")
+  if [ -n "$resp" ]; then
+    coord_online_clear
+  fi
+  return 0
+}
