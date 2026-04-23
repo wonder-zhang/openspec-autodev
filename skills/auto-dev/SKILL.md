@@ -146,6 +146,11 @@ Batch 3 (serial):   T1-3 → T4-1       ← serial chain
 Batch 4 (parallel): T3-2, T5-1        ← depends on Batch 2
 ```
 
+### 3.35 OpenSpec remote mirror (coordination server — design §5.4)
+When `.claude/coordination.json` has `enabled: true`:
+- **SessionStart** already refreshed `.claude/remote-specs/` from `GET /api/v1/specs` (and per-slug bodies). Saving `openspec/changes/<feature>/{proposal,specs,design,tasks}.md` triggers **PostToolUse** → `POST /api/v1/specs/sync` for that change directory (excluding `openspec/changes/archive/`).
+- **Before §3.4 Register File Claims**, read `.claude/remote-specs/_summary.json` and other slugs' `*.md` under `.claude/remote-specs/<slug>/`. Compare with your feature's `specs.md` / `design.md` to spot cross-team interface or module-boundary conflicts; adjust claims or specs before locking files.
+
 ### 3.4 Register File Claims
 Extract all target file paths from `${SESSION_DIR}/current-plan.md` and register them as file claims for this session. Update `.claude/sessions/${SESSION_ID}.json`:
 ```json

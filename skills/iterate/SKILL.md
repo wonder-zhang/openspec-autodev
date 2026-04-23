@@ -208,6 +208,9 @@ Analyze `${SESSION_DIR}/current-plan.md` to generate parallel execution batches 
 
 Generate batch plan and append to `${SESSION_DIR}/current-plan.md`.
 
+### 4.35 OpenSpec remote mirror (coordination server — design §5.4)
+When coordination is enabled: use `.claude/remote-specs/` (refreshed at SessionStart) before registering claims. Saving iteration change files under `openspec/changes/<feature>-vN>/{proposal,specs,design,tasks}.md` is mirrored to the server on PostToolUse. Compare remote slugs with your delta specs to avoid interface clashes.
+
 ### 4.4 Register File Claims
 Extract all target file paths from `${SESSION_DIR}/current-plan.md` and register as file claims in `.claude/sessions/${SESSION_ID}.json`. Check for conflicts with other active sessions before registering. If conflicts exist, warn the user and offer options (skip/force/abort).
 

@@ -175,6 +175,11 @@ curl -X POST http://localhost:9527/api/v1/projects \
 }
 ```
 
+#### OpenSpec 与协调服务（与设计文档 §5.4 一致）
+
+- **推送**：保存 `openspec/changes/<功能名>/{proposal,specs,design,tasks}.md`（不含 `archive/`）后，`PostToolUse` 会调用 `POST /api/v1/specs/sync`，把该 change 目录下已有的四个文件批量同步到服务端。
+- **拉取**：每次 **SessionStart** 且协调已启用时，会 `GET /api/v1/specs` 并写入 `.claude/remote-specs/`（摘要 + 各 slug 的 `*.md` 正文），供 Phase 2 前对照他人规格。
+
 #### 离线降级
 
 协调服务不可达时，所有 Hook 自动回退到本地模式，不会阻塞开发。

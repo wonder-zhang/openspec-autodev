@@ -89,6 +89,7 @@ Ensure the following entries exist in `.gitignore` (create if needed):
 # OpenSpec AutoDev workflow state (session-based)
 .claude/sessions/
 .claude/current-session-id
+.claude/remote-specs/
 .claude/workflow-metrics.log
 # Legacy (pre-session) state files
 .claude/workflow-state.json

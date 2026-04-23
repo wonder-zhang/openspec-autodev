@@ -44,4 +44,17 @@ echo "$FILE" | grep -qE '\.(ts|tsx|js|jsx)$' && {
   npx eslint --fix "$FILE" 2>/dev/null
 }
 
+# OpenSpec → coordination server (design §5.4: POST /specs/sync; exit 0 only when sync ran)
+if [ "$COORD_ENABLED" = "true" ] && command -v node &>/dev/null; then
+  _SP_FILE="${FILE//\\//}"
+  if [ -f "$FILE" ] && [[ "$_SP_FILE" == openspec/changes/* ]]; then
+    export COORD_SERVER COORD_API_KEY COORD_PROJECT_ID COORD_TIMEOUT
+    node "${SCRIPT_DIR}/coord-specs-cache.cjs" push --file "$FILE" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+      coord_online_clear
+    fi
+  fi
+  unset _SP_FILE
+fi
+
 exit 0

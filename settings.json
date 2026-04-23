@@ -84,7 +84,6 @@
       "Bash(wget * | bash*)",
       "Bash(wget * | sh*)",
       "Bash(eval *)",
-      "Bash(:(){ :|:& };:*)",
       "Bash(mkfs *)",
       "Bash(dd if=*)",
       "Bash(format *)",

@@ -60,6 +60,17 @@ else
   list_active_sessions
 fi
 
+# Remote OpenSpec spec cache (design §5.4: GET /specs at session start → .claude/remote-specs/)
+if [ "$COORD_ENABLED" = "true" ] && command -v node &>/dev/null; then
+  export COORD_SERVER COORD_API_KEY COORD_PROJECT_ID COORD_TIMEOUT
+  if node "${SCRIPT_DIR}/coord-specs-cache.cjs" pull >/dev/null 2>&1; then
+    coord_online_clear
+    echo "📋 Remote OpenSpec cache: .claude/remote-specs/ (GET /api/v1/specs)"
+  else
+    coord_offline_warning
+  fi
+fi
+
 # --- OpenSpec Context ---
 if [ -f openspec/AGENTS.md ]; then
   echo "--- OpenSpec Context ---"
